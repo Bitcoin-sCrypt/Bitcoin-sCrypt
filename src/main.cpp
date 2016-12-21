@@ -885,6 +885,7 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
 
 unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pblock)
 {
+	printf("GetNextWorkRequired ENTRY\n");
 	if ((pindexLast->nHeight+1) > 96180)
 	{
 		nTargetTimespan = 60 * 60;
@@ -939,8 +940,14 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
                 return pindex->nBits;
             }
         }
-
-        return pindexLast->nBits;
+		else  //not on test net
+		{
+			if (pblock->nTime < pindexLast->nTime + nTargetSpacing* 4) //if we are less than 4 times the normal interval still return the last difficulty otherwise we will recalculate
+			{
+				printf("GetNextWorkRequired returning last difficulty - same interval\n");
+				return pindexLast->nBits;
+			}
+		}
     }
 
     // Litecoin: This fixes an issue where a 51% attack can change difficulty at will.
@@ -973,12 +980,28 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
 
     // Retarget
     CBigNum bnNew;
-    bnNew.SetCompact(pindexLast->nBits);
-    bnNew *= nActualTimespan;
-    bnNew /= nTargetTimespan;
-
+	bnNew.SetCompact(pindexLast->nBits);
+    
+	if (pblock->nTime > pindexLast->nTime + nTargetSpacing* 4) //greater than 4 * spacing < reduce diff
+	{
+		int64 nCurentTimespan = pblock->nTime - pindexLast->GetBlockTime();
+		printf("  pblock->nTime = %"PRI64d"  max target = %"PRI64d" \n", pblock->nTime, pindexLast->nTime + nTargetSpacing* 4);
+		printf(" currntTimespan = = %"PRI64d" \n", nCurentTimespan);
+		bnNew *= nCurentTimespan;
+		bnNew /= nTargetTimespan;
+	}
+	else
+	{
+		bnNew *= nActualTimespan;
+		bnNew /= nTargetTimespan;
+	}
+	
     if (bnNew > bnProofOfWorkLimit)
+	{
+		printf(" bnNew exceeded proof of work limit\n");
         bnNew = bnProofOfWorkLimit;
+	}
+
 
     /// debug print
     printf("GetNextWorkRequired RETARGET\n");
@@ -1047,11 +1070,13 @@ void static InvalidChainFound(CBlockIndex* pindexNew)
 
 void CBlock::UpdateTime(const CBlockIndex* pindexPrev)
 {
-    nTime = max(pindexPrev->GetMedianTimePast()+1, GetAdjustedTime());
-
+	nTime = max(pindexPrev->GetMedianTimePast()+1, GetAdjustedTime());
+	printf("UpdateTime() nTime = %ld\n", nTime);
+	
     // Updating time can change work required on testnet:
-    if (fTestNet)
+    //if (fTestNet)
         nBits = GetNextWorkRequired(pindexPrev, this);
+
 }
 
 
