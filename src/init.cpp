@@ -327,13 +327,14 @@ bool AppInit2()
 #endif
 
     // ********************************************************* Step 2: parameter interactions
+    SoftSetBoolArg("-irc", false);
+    SoftSetBoolArg("-listen", true); // just making sure
+    SoftSetBoolArg("-dnsseed", true);
 
     fTestNet = GetBoolArg("-testnet");
-    // Keep irc seeding on by default for now.
-//    if (fTestNet)
-//    {
-        SoftSetBoolArg("-irc", true);
-//    }
+    if (fTestNet) {
+        SoftSetBoolArg("-irc", false);
+    }
 
     if (mapArgs.count("-bind")) {
         // when specifying an explicit binding address, you want to listen on it

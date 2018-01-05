@@ -11,6 +11,8 @@
 
 #include <QAbstractItemDelegate>
 #include <QPainter>
+#include <QDesktopServices>
+#include <QUrl>
 
 #define DECORATION_SIZE 64
 #define NUM_ITEMS 3
@@ -108,6 +110,11 @@ OverviewPage::OverviewPage(QWidget *parent) :
 
     connect(ui->listTransactions, SIGNAL(clicked(QModelIndex)), this, SLOT(handleTransactionClicked(QModelIndex)));
 
+    // clicking on logo opens web browser to home page
+    connect(ui->HomeButton, SIGNAL (released()), this, SLOT (handleHomeButton()));
+//    ui->HomeButton->setToolTip(tr("Click to go to Bitcoin sCrypt Home page."));
+//    ui->HomeButton->setStyleSheet("background-color:rgba(255,255,255,200)");
+
     // init "out of sync" warning labels
     ui->labelWalletStatus->setText("(" + tr("Out of sync") + ")");
     ui->labelTransactionsStatus->setText("(" + tr("Out of sync") + ")");
@@ -120,6 +127,11 @@ void OverviewPage::handleTransactionClicked(const QModelIndex &index)
 {
     if(filter)
         emit transactionClicked(filter->mapToSource(index));
+}
+
+void OverviewPage::handleHomeButton()
+{
+  QDesktopServices::openUrl(QUrl("http://Bitcoinscrypt.co"));
 }
 
 OverviewPage::~OverviewPage()
