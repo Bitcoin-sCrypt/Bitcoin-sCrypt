@@ -11,12 +11,18 @@
 #include <string>
 #include <list>
 #include <map>
+#include "wallet.h"
 
 #include "json/json_spirit_reader_template.h"
 #include "json/json_spirit_writer_template.h"
 #include "json/json_spirit_utils.h"
 
 json_spirit::Object JSONRPCError(int code, const std::string& message);
+
+extern json_spirit::Value ValueFromAmount(int64 amount);
+extern json_spirit::Value checkwallet(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value repairwallet(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value zapwallettxes(const json_spirit::Array& params, bool fHelp);
 
 void ThreadRPCServer(void* parg);
 int CommandLineRPC(int argc, char *argv[]);
