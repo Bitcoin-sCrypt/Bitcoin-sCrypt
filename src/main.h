@@ -21,6 +21,7 @@ class CBlock;
 class CBlockIndex;
 class CKeyItem;
 class CReserveKey;
+class COutPoint;
 
 class CAddress;
 class CInv;
@@ -40,6 +41,7 @@ static const unsigned int MAX_BLOCK_SIZE_GEN = MAX_BLOCK_SIZE/2;
 static const unsigned int MAX_BLOCK_SIGOPS = MAX_BLOCK_SIZE/50;
 static const unsigned int MAX_ORPHAN_TRANSACTIONS = MAX_BLOCK_SIZE/100;
 static const int64 MIN_TX_FEE = 50000;
+static const int64 MIN_TXOUT_AMOUNT = MIN_TX_FEE;
 static const int64 MIN_RELAY_TX_FEE = 10000;
 static const int64 MAX_MONEY = 21000000 * COIN; // maximum number of coins
 inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
@@ -352,6 +354,17 @@ public:
         return (nValue == -1);
     }
 
+    void SetEmpty()
+    {
+        nValue = 0;
+        scriptPubKey.clear();
+    }
+
+    bool IsEmpty() const
+    {
+        return (nValue == 0 && scriptPubKey.empty());
+    }
+
     uint256 GetHash() const
     {
         return SerializeHash(*this);
@@ -493,6 +506,12 @@ public:
         return (vin.size() == 1 && vin[0].prevout.IsNull());
     }
 
+    bool IsCoinStake() const
+    {
+        // ppcoin: the coin stake transaction is marked with the first output empty
+        return (vin.size() > 0 && (!vin[0].prevout.IsNull()) && vout.size() >= 2 && vout[0].IsEmpty());
+    }
+
     /** Check for standard transaction types
         @return True if all outputs (scriptPubKeys) use only standard transaction forms
     */
@@ -551,50 +570,7 @@ public:
         return dPriority > COIN * 576 / 250; // 5760 blocks found a day. Priority cutoff is 1 SMC day / 250 bytes.
     }
 
-    int64 GetMinFee(unsigned int nBlockSize=1, bool fAllowFree=true, enum GetMinFee_mode mode=GMF_BLOCK) const
-    {
-        // Base fee is either MIN_TX_FEE or MIN_RELAY_TX_FEE
-        int64 nBaseFee = (mode == GMF_RELAY) ? MIN_RELAY_TX_FEE : MIN_TX_FEE;
-
-        unsigned int nBytes = ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
-        unsigned int nNewBlockSize = nBlockSize + nBytes;
-        int64 nMinFee = (1 + (int64)nBytes / 1000) * nBaseFee;
-
-        if (fAllowFree)
-        {
-            if (nBlockSize == 1)
-            {
-                // Transactions under 10K are free
-                // (about 4500bc if made of 50bc inputs)
-                if (nBytes < 10000)
-                    nMinFee = 0;
-            }
-            else
-            {
-                // Free transaction area
-                if (nNewBlockSize < 27000)
-                    nMinFee = 0;
-            }
-        }
-
-        // To limit dust spam, add MIN_TX_FEE/MIN_RELAY_TX_FEE for any output that is less than 0.01
-        BOOST_FOREACH(const CTxOut& txout, vout)
-            if (txout.nValue < CENT)
-                nMinFee += nBaseFee;
-
-        // Raise the price as the block approaches full
-        if (nBlockSize != 1 && nNewBlockSize >= MAX_BLOCK_SIZE_GEN/2)
-        {
-            if (nNewBlockSize >= MAX_BLOCK_SIZE_GEN)
-                return MAX_MONEY;
-            nMinFee *= MAX_BLOCK_SIZE_GEN / (MAX_BLOCK_SIZE_GEN - nNewBlockSize);
-        }
-
-        if (!MoneyRange(nMinFee))
-            nMinFee = MAX_MONEY;
-        return nMinFee;
-    }
-
+    int64 GetMinFee(unsigned int nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK, unsigned int nBytes=0) const;
 
     bool ReadFromDisk(CDiskTxPos pos, FILE** pfileRet=NULL)
     {

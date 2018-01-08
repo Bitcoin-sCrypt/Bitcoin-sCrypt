@@ -7,16 +7,25 @@
 #ifndef BITCOIN_WALLET_H
 #define BITCOIN_WALLET_H
 
+#include <string>
+#include <vector>
+
+#include <stdlib.h>
+
 #include "main.h"
 #include "key.h"
 #include "keystore.h"
 #include "script.h"
 #include "ui_interface.h"
+#include "util.h"
+#include "walletdb.h"
 
+class CAccountingEntry;
 class CWalletTx;
 class CReserveKey;
-class CWalletDB;
+//class CWalletDB;
 class COutput;
+class CCoinControl;
 
 /** (client) version numbers for particular wallet features */
 enum WalletFeature
@@ -63,7 +72,9 @@ public:
 class CWallet : public CCryptoKeyStore
 {
 private:
-    bool SelectCoins(int64 nTargetValue, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet) const;
+  bool SelectCoinsSimple(int64 nTargetValue, unsigned int nSpendTime, int nMinConf, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet) const;
+
+  bool SelectCoins(int64 nTargetValue, unsigned int nSpendTime, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet, const CCoinControl *coinControl=NULL) const;
 
     CWalletDB *pwalletdbEncryption;
 
@@ -114,7 +125,7 @@ public:
     // check whether we are allowed to upgrade (or already support) to the named feature
     bool CanSupportFeature(enum WalletFeature wf) { return nWalletMaxVersion >= wf; }
 
-    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true) const;
+    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true, const CCoinControl *coinControl=NULL) const;
     bool SelectCoinsMinConf(int64 nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet) const;
 
     // keystore implementation
@@ -150,8 +161,9 @@ public:
     int64 GetBalance() const;
     int64 GetUnconfirmedBalance() const;
     int64 GetImmatureBalance() const;
-    bool CreateTransaction(const std::vector<std::pair<CScript, int64> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet);
-    bool CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet);
+    bool CreateTransaction(const std::vector<std::pair<CScript, int64> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, const CCoinControl *coinControl=NULL);
+    bool CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, const CCoinControl *coinControl=NULL);
+
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
     std::string SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string SendMoneyToDestination(const CTxDestination &address, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
@@ -233,7 +245,8 @@ public:
     }
     void SetBestChain(const CBlockLocator& loc);
 
-    int LoadWallet(bool& fFirstRunRet);
+    DBErrors LoadWallet(bool& fFirstRunRet);
+    DBErrors ZapWalletTx(std::vector<CWalletTx>& vWtx);
 
     bool SetAddressBookName(const CTxDestination& address, const std::string& strName);
 
@@ -270,6 +283,10 @@ public:
 
     // get the current wallet format (the oldest client version guaranteed to understand this wallet)
     int GetVersion() { return nWalletVersion; }
+
+// wallet check/repair
+     void Fix_SpentCoins(int& nMismatchSpent, int64& nBalanceInQuestion, int& nOrphansFound, bool fCheckOnly = false);
+    void FixSpentCoins(int& nMismatchSpent, int64& nBalanceInQuestion, bool fCheckOnly = false);
 
     /** Address book entry changed.
      * @note called with lock cs_wallet held.
@@ -321,10 +338,13 @@ public:
     std::map<std::string, std::string> mapValue;
     std::vector<std::pair<std::string, std::string> > vOrderForm;
     unsigned int fTimeReceivedIsTxTime;
+    unsigned int nTime;
     unsigned int nTimeReceived;  // time received by this node
+    unsigned int nTimeSmart;
     char fFromMe;
     std::string strFromAccount;
     std::vector<char> vfSpent; // which outputs are already spent
+    int64 nOrderPos;  // position in ordered transaction list
 
     // memory only
     mutable bool fDebitCached;
@@ -466,6 +486,18 @@ public:
         if (!vfSpent[nOut])
         {
             vfSpent[nOut] = true;
+            fAvailableCreditCached = false;
+        }
+    }
+
+    void MarkUnspent(unsigned int nOut)
+    {
+        if (nOut >= vout.size())
+            throw std::runtime_error("CWalletTx::MarkUnspent() : nOut out of range");
+        vfSpent.resize(vout.size());
+        if (vfSpent[nOut])
+        {
+            vfSpent[nOut] = false;
             fAvailableCreditCached = false;
         }
     }
