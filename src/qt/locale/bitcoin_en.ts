@@ -1673,7 +1673,7 @@ Address: %4
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Specify configuration file (default: bitcoin.conf)</source>
+        <source>Specify configuration file (default: bitcoin-script.conf)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

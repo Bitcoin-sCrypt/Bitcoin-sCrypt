@@ -2004,8 +2004,8 @@ Address: %4
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="50"/>
-        <source>Specify configuration file (default: bitcoin.conf)</source>
-        <translation>(: bitcoin.confپیش فرض: )فایل تنظیمی خاص </translation>
+        <source>Specify configuration file (default: bitcoin-script.conf)</source>
+        <translation>(: bitcoin-script.confپیش فرض: )فایل تنظیمی خاص </translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="51"/>

@@ -2003,8 +2003,8 @@ Cím: %4
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="50"/>
-        <source>Specify configuration file (default: bitcoin.conf)</source>
-        <translation>Konfigurációs fájl (alapértelmezett: bitcoin.conf)
+        <source>Specify configuration file (default: bitcoin-script.conf)</source>
+        <translation>Konfigurációs fájl (alapértelmezett: bitcoin-script.conf)
 </translation>
     </message>
     <message>

@@ -2007,8 +2007,8 @@ Dirección: %4</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="50"/>
-        <source>Specify configuration file (default: bitcoin.conf)</source>
-        <translation>Especifica archivo de configuración (predeterminado: bitcoin.conf)
+        <source>Specify configuration file (default: bitcoin-script.conf)</source>
+        <translation>Especifica archivo de configuración (predeterminado: bitcoin-script.conf)
 </translation>
     </message>
     <message>
