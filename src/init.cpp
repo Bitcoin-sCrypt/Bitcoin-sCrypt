@@ -124,7 +124,7 @@ bool AppInit(int argc, char* argv[])
         //
         // Parameters
         //
-        // If Qt is used, parameters/bitcoin-script.conf are parsed in qt/bitcoin.cpp's main()
+        // If Qt is used, parameters/bitcoin-scrypt.conf are parsed in qt/bitcoin.cpp's main()
         ParseParameters(argc, argv);
         if (!boost::filesystem::is_directory(GetDataDir(false)))
         {
@@ -221,7 +221,7 @@ extern double GetDifficulty(const CBlockIndex* blockindex = NULL);
 std::string HelpMessage()
 {
     string strUsage = _("Options:") + "\n" +
-        "  -conf=<file>           " + _("Specify configuration file (default: bitcoin-script.conf)") + "\n" +
+        "  -conf=<file>           " + _("Specify configuration file (default: bitcoin-scrypt.conf)") + "\n" +
         "  -pid=<file>            " + _("Specify pid file (default: bitcoin.pid)") + "\n" +
         "  -gen                   " + _("Generate coins") + "\n" +
         "  -gen=0                 " + _("Don't generate coins") + "\n" +

@@ -2008,8 +2008,8 @@ Adres: %4
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="50"/>
-        <source>Specify configuration file (default: bitcoin-script.conf)</source>
-        <translation>Wskaż plik konfiguracyjny (domyślnie: bitcoin-script.conf)</translation>
+        <source>Specify configuration file (default: bitcoin-scrypt.conf)</source>
+        <translation>Wskaż plik konfiguracyjny (domyślnie: bitcoin-scrypt.conf)</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="51"/>

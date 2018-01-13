@@ -2003,8 +2003,8 @@ Adresa:%4
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="50"/>
-        <source>Specify configuration file (default: bitcoin-script.conf)</source>
-        <translation>Odredi konfiguracijsku datoteku (ugrađeni izbor: bitcoin-script.conf)</translation>
+        <source>Specify configuration file (default: bitcoin-scrypt.conf)</source>
+        <translation>Odredi konfiguracijsku datoteku (ugrađeni izbor: bitcoin-scrypt.conf)</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="51"/>
