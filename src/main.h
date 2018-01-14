@@ -48,7 +48,7 @@ inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONE
 static const int COINBASE_MATURITY = 100;
 
 // time to switch to KimotoGravityWell
-static const unsigned int VERSION2_SWITCH_TIME = 1515870000; // Mon Jan 13 11:00:00 2017
+static const unsigned int VERSION2_SWITCH_TIME = 1518998400; // Mon Feb 19 00:00:00 UTC 2018
 
 // Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp.
 static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC

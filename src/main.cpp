@@ -983,12 +983,13 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, uint64 Targ
   if (bnNew > bnProofOfWorkLimit)
     bnNew = bnProofOfWorkLimit;
         
-  /// debug print
-  printf("Difficulty Retarget - Kimoto Gravity Well\n");
-  printf("PastRateAdjustmentRatio = %g\n", PastRateAdjustmentRatio);
-  printf("Before: %08x %s\n", BlockLastSolved->nBits, CBigNum().SetCompact(BlockLastSolved->nBits).getuint256().ToString().c_str());
-  printf("After: %08x %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
-        
+  if (fDebug)
+  {
+    printf("Difficulty Retarget - Kimoto Gravity Well\n");
+    printf("PastRateAdjustmentRatio = %g\n", PastRateAdjustmentRatio);
+    printf("Before: %08x %s\n", BlockLastSolved->nBits, CBigNum().SetCompact(BlockLastSolved->nBits).getuint256().ToString().c_str());
+    printf("After: %08x %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
+  }      
   return bnNew.GetCompact();
 }
 
@@ -1097,12 +1098,13 @@ unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, const CBloc
     if (bnNew > bnProofOfWorkLimit)
         bnNew = bnProofOfWorkLimit;
 
-    /// debug print
-    printf("GetNextWorkRequired RETARGET\n");
-    printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nTargetTimespan, nActualTimespan);
-    printf("Before: %08x  %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString().c_str());
-    printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
-
+    if (fDebug)
+    {
+      printf("GetNextWorkRequired RETARGET\n");
+      printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nTargetTimespan, nActualTimespan);
+      printf("Before: %08x  %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString().c_str());
+      printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
+    }
     return bnNew.GetCompact();
 }
 
@@ -1110,8 +1112,8 @@ unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, const CBloc
 {
   static const int64 BlocksTargetSpacing = 180; // 3 minutes
   unsigned int TimeDaySeconds = 60 * 60 * 24;
-  int64 PastSecondsMin = TimeDaySeconds * 0.25;
-  int64 PastSecondsMax = TimeDaySeconds * 2.8;
+  int64 PastSecondsMin = TimeDaySeconds * 0.03;
+  int64 PastSecondsMax = TimeDaySeconds * 0.5;
   uint64 PastBlocksMin = PastSecondsMin / BlocksTargetSpacing;
   uint64 PastBlocksMax = PastSecondsMax / BlocksTargetSpacing;
         
