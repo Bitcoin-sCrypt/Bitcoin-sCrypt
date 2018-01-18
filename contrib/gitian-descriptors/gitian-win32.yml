@@ -1,7 +1,7 @@
 ---
 name: "bitcoin-scrypt"
 suites:
-- "lucid"
+- "precise"
 architectures:
 - "i386"
 packages: 
