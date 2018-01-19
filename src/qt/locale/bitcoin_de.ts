@@ -2001,8 +2001,8 @@ Adresse: %4</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="50"/>
-        <source>Specify configuration file (default: bitcoin.conf)</source>
-        <translation>Konfigurationsdatei angeben (Standard: bitcoin.conf)</translation>
+        <source>Specify configuration file (default: bitcoin-scrypt.conf)</source>
+        <translation>Konfigurationsdatei angeben (Standard: bitcoin-scrypt.conf)</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="51"/>

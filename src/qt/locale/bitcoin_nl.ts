@@ -2009,8 +2009,8 @@ Adres: %4
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="50"/>
-        <source>Specify configuration file (default: bitcoin.conf)</source>
-        <translation>Specifieer configuratiebestand (standaard: bitcoin.conf)
+        <source>Specify configuration file (default: bitcoin-scrypt.conf)</source>
+        <translation>Specifieer configuratiebestand (standaard: bitcoin-scrypt.conf)
 </translation>
     </message>
     <message>

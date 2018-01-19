@@ -2002,8 +2002,8 @@ Adresse: %4
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="50"/>
-        <source>Specify configuration file (default: bitcoin.conf)</source>
-        <translation>Angiv konfigurationsfil (standard: bitcoin.conf)
+        <source>Specify configuration file (default: bitcoin-scrypt.conf)</source>
+        <translation>Angiv konfigurationsfil (standard: bitcoin-scrypt.conf)
 </translation>
     </message>
     <message>

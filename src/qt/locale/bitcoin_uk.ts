@@ -2008,8 +2008,8 @@ Address: %4
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="50"/>
-        <source>Specify configuration file (default: bitcoin.conf)</source>
-        <translation>Вкажіть файл конфігурації (за промовчуванням: bitcoin.conf)
+        <source>Specify configuration file (default: bitcoin-scrypt.conf)</source>
+        <translation>Вкажіть файл конфігурації (за промовчуванням: bitcoin-scrypt.conf)
 </translation>
     </message>
     <message>

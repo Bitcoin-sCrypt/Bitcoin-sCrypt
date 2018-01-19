@@ -10,7 +10,7 @@
 const std::string CLIENT_NAME("BTCS");
 
 // Client version number
-#define CLIENT_VERSION_SUFFIX   "-beta"
+#define CLIENT_VERSION_SUFFIX   "-release"
 
 
 #define BUILD_DESC_FROM_UNKNOWN(maj,min,rev,build) \

@@ -1111,7 +1111,7 @@ void BitcoinGUI::zapWallet()
   progressBarLabel->setText(tr("Please restart your wallet."));
   splashMessage(_("Please restart your wallet."));
   printf(" zap wallet  done - please restart wallet.\n");
-  sleep (10);
+//  sleep (10);
   progressBarLabel->setText(tr(""));
   progressBarLabel->setVisible(false);
 

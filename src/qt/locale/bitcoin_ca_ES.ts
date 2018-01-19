@@ -1992,7 +1992,7 @@ Address: %4
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="50"/>
-        <source>Specify configuration file (default: bitcoin.conf)</source>
+        <source>Specify configuration file (default: bitcoin-scrypt.conf)</source>
         <translation type="unfinished"/>
     </message>
     <message>
