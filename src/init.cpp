@@ -221,6 +221,7 @@ extern double GetDifficulty(const CBlockIndex* blockindex = NULL);
 std::string HelpMessage()
 {
     string strUsage = _("Options:") + "\n" +
+        "  -?                     " + _("This help message") + "\n" +
         "  -conf=<file>           " + _("Specify configuration file (default: bitcoin-scrypt.conf)") + "\n" +
         "  -pid=<file>            " + _("Specify pid file (default: bitcoin.pid)") + "\n" +
         "  -gen                   " + _("Generate coins") + "\n" +
@@ -564,6 +565,16 @@ bool AppInit2()
         }
     }
 
+    if (mapArgs.count("-reservebalance")) // ppcoin: reserve balance amount
+    {
+        int64 nReserveBalance = 0;
+        if (!ParseMoney(mapArgs["-reservebalance"], nReserveBalance))
+        {
+            InitError(_("Invalid amount for -reservebalance=<amount>"));
+            return false;
+        }
+    }
+
     BOOST_FOREACH(string strDest, mapMultiArgs["-seednode"])
         AddOneShot(strDest);
 
@@ -734,6 +745,18 @@ bool AppInit2()
             FILE *file = fopen(strFile.c_str(), "rb");
             if (file)
                 LoadExternalBlockFile(file);
+        }
+    }
+
+    filesystem::path pathBootstrap = GetDataDir() / "bootstrap.dat";
+    if (filesystem::exists(pathBootstrap)) {
+        uiInterface.InitMessage(_("Importing bootstrap blockchain data file."));
+
+        FILE *file = fopen(pathBootstrap.string().c_str(), "rb");
+        if (file) {
+            filesystem::path pathBootstrapOld = GetDataDir() / "bootstrap.dat.old";
+            LoadExternalBlockFile(file);
+            RenameOver(pathBootstrap, pathBootstrapOld);
         }
     }
 
