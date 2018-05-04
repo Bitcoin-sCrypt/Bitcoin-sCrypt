@@ -2397,6 +2397,8 @@ void PrintBlockTree()
 
 bool LoadExternalBlockFile(FILE* fileIn)
 {
+    int64 nStart = GetTimeMillis();
+
     int nLoaded = 0;
     {
         LOCK(cs_main);
@@ -2449,17 +2451,9 @@ bool LoadExternalBlockFile(FILE* fileIn)
                    __PRETTY_FUNCTION__);
         }
     }
-    printf("Loaded %i blocks from external file\n", nLoaded);
+    printf("Loaded %i blocks from external file in %"PRI64d"ms\n", nLoaded, GetTimeMillis() - nStart);
     return nLoaded > 0;
 }
-
-
-
-
-
-
-
-
 
 //////////////////////////////////////////////////////////////////////////////
 //

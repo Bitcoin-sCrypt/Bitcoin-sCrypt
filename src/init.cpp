@@ -580,6 +580,20 @@ bool AppInit2()
 
     // ********************************************************* Step 6: load blockchain
 
+    filesystem::path pathBootstrap = GetDataDir() / "bootstrap.dat";
+    if (filesystem::exists(pathBootstrap)) {
+        uiInterface.InitMessage(_("Importing bootstrap blockchain data file."));
+
+        FILE *file = fopen(pathBootstrap.string().c_str(), "rb");
+        if (file) {
+            filesystem::path pathBootstrapOld = GetDataDir() / "bootstrap.dat.old";
+            LoadExternalBlockFile(file);
+            RenameOver(pathBootstrap, pathBootstrapOld);
+        }
+    }
+
+
+
     if (GetBoolArg("-loadblockindextest"))
     {
         CTxDB txdb("r");
@@ -745,18 +759,6 @@ bool AppInit2()
             FILE *file = fopen(strFile.c_str(), "rb");
             if (file)
                 LoadExternalBlockFile(file);
-        }
-    }
-
-    filesystem::path pathBootstrap = GetDataDir() / "bootstrap.dat";
-    if (filesystem::exists(pathBootstrap)) {
-        uiInterface.InitMessage(_("Importing bootstrap blockchain data file."));
-
-        FILE *file = fopen(pathBootstrap.string().c_str(), "rb");
-        if (file) {
-            filesystem::path pathBootstrapOld = GetDataDir() / "bootstrap.dat.old";
-            LoadExternalBlockFile(file);
-            RenameOver(pathBootstrap, pathBootstrapOld);
         }
     }
 
