@@ -2397,6 +2397,12 @@ void PrintBlockTree()
 
 bool LoadExternalBlockFile(FILE* fileIn)
 {
+    unsigned int tempcount=0;
+    unsigned int steptemp=0;
+    string tempmess;
+
+    int64 nStart = GetTimeMillis();
+
     int nLoaded = 0;
     {
         LOCK(cs_main);
@@ -2426,6 +2432,15 @@ bool LoadExternalBlockFile(FILE* fileIn)
                     }
                     else
                         nPos += sizeof(pchData) - sizeof(pchMessageStart) + 1;
+            tempcount ++;
+            if(tempcount>=1000)
+            {
+              steptemp ++;
+//              tempmess=mess+ boost::to_string(steptemp * 1000);
+              sprintf(pString, _("bootstrap loading %d").c_str(), steptemp * 1000);
+              uiInterface.InitMessage(pString);
+              tempcount=0;
+            }
                 } while(!fRequestShutdown);
                 if (nPos == (unsigned int)-1)
                     break;
@@ -2449,17 +2464,14 @@ bool LoadExternalBlockFile(FILE* fileIn)
                    __PRETTY_FUNCTION__);
         }
     }
-    printf("Loaded %i blocks from external file\n", nLoaded);
+    steptemp=steptemp*1000 +tempcount;
+//    tempmess=mess+ boost::to_string(steptemp);
+    sprintf(pString, _("%d").c_str(), steptemp);
+    uiInterface.InitMessage(pString);
+
+    printf("Loaded %i blocks from external file in %"PRI64d"ms\n", nLoaded, GetTimeMillis() - nStart);
     return nLoaded > 0;
 }
-
-
-
-
-
-
-
-
 
 //////////////////////////////////////////////////////////////////////////////
 //

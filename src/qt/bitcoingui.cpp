@@ -998,6 +998,7 @@ void BitcoinGUI::zapWallet()
 
   // bring up splash screen
   QSplashScreen splash(QPixmap(":/images/splash"), 0);
+  splash.setEnabled(false);
   splash.show();
   splash.setAutoFillBackground(true);
   splashref = &splash;
