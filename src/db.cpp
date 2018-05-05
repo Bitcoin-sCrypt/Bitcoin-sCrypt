@@ -25,7 +25,8 @@ using namespace boost;
 
 unsigned int nWalletDBUpdated;
 
-
+char pString[256];
+string mess;
 
 //
 // CDB
@@ -488,8 +489,8 @@ bool CTxDB::LoadBlockIndex()
     if (fRequestShutdown)
         return true;
 
-    string mess="calculating best chain...";
-    uiInterface.InitMessage(_(mess.c_str()));
+//    mess="calculating best chain...";
+    uiInterface.InitMessage("calculating best chain ...");
 
     // Calculate bnChainWork
     vector<pair<int, CBlockIndex*> > vSortedByHeight;
@@ -522,8 +523,9 @@ bool CTxDB::LoadBlockIndex()
       hashBestChain.ToString().substr(0,20).c_str(), nBestHeight,
       DateTimeStrFormat("%x %H:%M:%S", pindexBest->GetBlockTime()).c_str());
 
-    mess="best chain height "+boost::to_string(nBestHeight);
-    uiInterface.InitMessage(_(mess.c_str()));
+//    mess="best chain height "+boost::to_string(nBestHeight);
+    sprintf(pString, _("best chain height %d").c_str(), nBestHeight);
+    uiInterface.InitMessage(pString);
 
     // Load bnBestInvalidWork, OK if it doesn't exist
     ReadBestInvalidWork(bnBestInvalidWork);
@@ -536,8 +538,9 @@ bool CTxDB::LoadBlockIndex()
     if (nCheckDepth > nBestHeight)
         nCheckDepth = nBestHeight;
     printf("Verifying last %i blocks at level %i\n", nCheckDepth, nCheckLevel);
-    mess="verifying last "+boost::to_string(nCheckDepth);
-    uiInterface.InitMessage(_(mess.c_str()));
+//    mess="verifying last "+boost::to_string(nCheckDepth);
+    sprintf(pString, _("verifying last %i blocks at level %i").c_str(),nCheckDepth,nCheckLevel);
+    uiInterface.InitMessage(pString);
 
     CBlockIndex* pindexFork = NULL;
     map<pair<unsigned int, unsigned int>, CBlockIndex*> mapBlockPos;
@@ -552,8 +555,9 @@ tempcount++;
 if(tempcount>=100)
 {
   steptemp ++;
-  tempmess=mess+" / "+ boost::to_string(pindex);
-  uiInterface.InitMessage(_(tempmess.c_str()));
+//  tempmess=mess+" / "+ boost::to_string(pindex);
+  sprintf(pString, _("%d / %d").c_str(), nCheckDepth, pindex);
+  uiInterface.InitMessage(pString);
   tempcount=0;
 }
         if (fRequestShutdown || pindex->nHeight < nBestHeight-nCheckDepth)
@@ -676,8 +680,8 @@ if(tempcount>=100)
 
 bool CTxDB::LoadBlockIndexGuts()
 {
-    string mess="loading block index ";
-    uiInterface.InitMessage(_(mess.c_str()));
+//    mess="loading block index ";
+    uiInterface.InitMessage("loading block index");
 
     // Get database cursor
     Dbc* pcursor = GetCursor();
@@ -732,8 +736,9 @@ bool CTxDB::LoadBlockIndexGuts()
             if(tempcount>=1000)
             {
               steptemp ++;
-              tempmess=mess+ boost::to_string(steptemp * 1000);
-              uiInterface.InitMessage(_(tempmess.c_str()));
+//              tempmess=mess+ boost::to_string(steptemp * 1000);
+              sprintf(pString, _("loading %d").c_str(), steptemp * 1000);
+              uiInterface.InitMessage(pString);
               tempcount=0;
             }
 
@@ -756,8 +761,9 @@ bool CTxDB::LoadBlockIndexGuts()
     pcursor->close();
 
     steptemp=steptemp*1000 +tempcount;
-    tempmess=mess+ boost::to_string(steptemp);
-    uiInterface.InitMessage(_(tempmess.c_str()));
+//    tempmess=mess+ boost::to_string(steptemp);
+    sprintf(pString, _("%d").c_str(), steptemp);
+    uiInterface.InitMessage(pString);
 
     return true;
 }

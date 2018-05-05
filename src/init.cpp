@@ -576,7 +576,7 @@ bool AppInit2()
 
     filesystem::path pathBootstrap = GetDataDir() / "bootstrap.dat";
     if (filesystem::exists(pathBootstrap)) {
-        uiInterface.InitMessage(_("Importing bootstrap blockchain data file."));
+        uiInterface.InitMessage("Importing bootstrap blockchain data file.");
 
         FILE *file = fopen(pathBootstrap.string().c_str(), "rb");
         if (file) {
@@ -758,8 +758,8 @@ bool AppInit2()
 
     // ********************************************************* Step 9: load peers
 
-    uiInterface.InitMessage(_("Loading addresses..."));
-    printf("Loading addresses...\n");
+    uiInterface.InitMessage(_("Loading peers..."));
+    printf("Loading peers...\n");
     nStart = GetTimeMillis();
 
     {

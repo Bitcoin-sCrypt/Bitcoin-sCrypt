@@ -2398,7 +2398,9 @@ void PrintBlockTree()
 bool LoadExternalBlockFile(FILE* fileIn)
 {
     int64 nStart = GetTimeMillis();
-
+char pString[256];
+int tempcount=0;
+int steptemp=0;
     int nLoaded = 0;
     {
         LOCK(cs_main);
@@ -2444,6 +2446,15 @@ bool LoadExternalBlockFile(FILE* fileIn)
                         nPos += 4 + nSize;
                     }
                 }
+            tempcount ++;
+            if(tempcount>=1000)
+            {
+              steptemp ++;
+//              tempmess=mess+ boost::to_string(steptemp * 1000);
+              sprintf(pString, _("bootstrap - %d").c_str(), steptemp * 1000);
+              uiInterface.InitMessage(pString);
+              tempcount=0;
+            }
             }
         }
         catch (std::exception &e) {
