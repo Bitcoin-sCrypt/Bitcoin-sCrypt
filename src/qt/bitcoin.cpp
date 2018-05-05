@@ -228,6 +228,7 @@ int main(int argc, char *argv[])
 //    QSplashScreen splash(QPixmap(":/images/splash"),Qt::Popup);
     if (GetBoolArg("-splash", true) && !GetBoolArg("-min"))
     {
+        splash.setEnabled(false);
         splash.show();
         splash.setAutoFillBackground(true);
         splashref = &splash;

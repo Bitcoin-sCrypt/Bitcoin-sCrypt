@@ -490,7 +490,7 @@ bool CTxDB::LoadBlockIndex()
         return true;
 
 //    mess="calculating best chain...";
-    uiInterface.InitMessage("calculating best chain ...");
+    uiInterface.InitMessage(_("calculating best chain ..."));
 
     // Calculate bnChainWork
     vector<pair<int, CBlockIndex*> > vSortedByHeight;
@@ -681,7 +681,7 @@ if(tempcount>=100)
 bool CTxDB::LoadBlockIndexGuts()
 {
 //    mess="loading block index ";
-    uiInterface.InitMessage("loading block index");
+    uiInterface.InitMessage(_("loading block index"));
 
     // Get database cursor
     Dbc* pcursor = GetCursor();
