@@ -2399,6 +2399,7 @@ bool LoadExternalBlockFile(FILE* fileIn)
 {
     unsigned int tempcount=0;
     unsigned int steptemp=0;
+    char pString[256];
     string tempmess;
 
     int64 nStart = GetTimeMillis();
