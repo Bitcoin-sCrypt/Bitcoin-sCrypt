@@ -97,6 +97,9 @@ public:
     void checkWallet(int& nMismatchSpent, qint64& nBalanceInQuestion, int& nOrphansFound);
     void repairWallet(int& nMismatchSpent, qint64& nBalanceInQuestion, int& nOrphansFound);
 
+    //PoS Information
+    void getStakeWeight(quint64& nMinWeight, quint64& nMaxWeight, quint64& nWeight);
+
     // RAI object for unlocking wallet, returned by requestUnlock()
     class UnlockContext
     {

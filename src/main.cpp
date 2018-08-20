@@ -31,7 +31,13 @@ unsigned int nTransactionsUpdated = 0;
 
 map<uint256, CBlockIndex*> mapBlockIndex;
 uint256 hashGenesisBlock("0x238e46f9222a2fdb20fde8ed5aee78d6b5e0f0d38d2ace3ceb5ebd6d00d99ae9");
+uint256 hashGenesisBlockTestNet("0x238e46f9222a2fdb20fde8ed5aee78d6b5e0f0d38d2ace3ceb5ebd6d00d99ae9");
 static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // starting difficulty is 1 / 2^12
+
+unsigned int nStakeMinAge = 60 * 60 * 24 * 1;	// minimum age for coin age: 1d
+unsigned int nStakeMaxAge = 60 * 60 * 24 * 100;	// stake age of full weight: 100d
+unsigned int nStakeTargetSpacing = 60;			// 60 sec block spacing
+
 CBlockIndex* pindexGenesisBlock = NULL;
 int nBestHeight = -1;
 CBigNum bnBestChainWork = 0;

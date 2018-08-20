@@ -24,6 +24,8 @@ extern json_spirit::Value checkwallet(const json_spirit::Array& params, bool fHe
 extern json_spirit::Value repairwallet(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value zapwallettxes(const json_spirit::Array& params, bool fHelp);
 
+double GetPoSKernelPS();
+
 void ThreadRPCServer(void* parg);
 int CommandLineRPC(int argc, char *argv[]);
 
