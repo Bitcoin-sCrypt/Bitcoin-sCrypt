@@ -329,6 +329,7 @@ bool AppInit2()
     SoftSetBoolArg("-listen", true); // just making sure
     SoftSetBoolArg("-dnsseed", true);
 
+    fTestNet = GetBoolArg("-testnet");
 
     if (mapArgs.count("-bind")) {
         // when specifying an explicit binding address, you want to listen on it
