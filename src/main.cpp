@@ -899,6 +899,7 @@ unsigned int GetStakeMaxAge(unsigned int nTime)
 static int64 nTargetTimespan = 3.5 * 24 * 60 * 60; 
 static int64 nTargetSpacing = 60 * 2; 
 static int64 nInterval = nTargetTimespan / nTargetSpacing;
+static const int64 nTargetSpacingWorkMax = 120; 
 
 //
 // maximum nBits value could possible be required nTime after
@@ -1119,6 +1120,52 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlock
     }
      
     return bnNew.GetCompact();
+}
+
+unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
+{// for pos
+  CBigNum bnTargetLimit = bnProofOfWorkLimit;
+
+  if(fProofOfStake)
+  {  // Proof-of-Stake blocks has own target limit
+     bnTargetLimit = bnProofOfStakeLimit;
+  }
+
+  if (pindexLast == NULL)
+    return bnTargetLimit.GetCompact(); // genesis block
+
+  const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, fProofOfStake);
+  if (pindexPrev->pprev == NULL)
+    return bnTargetLimit.GetCompact(); // first block
+
+  const CBlockIndex* pindexPrevPrev = GetLastBlockIndex(pindexPrev->pprev, fProofOfStake);
+  if (pindexPrevPrev->pprev == NULL)
+    return bnTargetLimit.GetCompact(); // second block
+
+  int64 nActualSpacing = pindexPrev->GetBlockTime() - pindexPrevPrev->GetBlockTime();
+  if(nActualSpacing < 0)
+  {
+    nActualSpacing = 1;
+  }
+  else if(nActualSpacing > nTargetTimespan)
+  {
+    nActualSpacing = nTargetTimespan;
+  }
+
+  // ppcoin: target change every block
+  // ppcoin: retarget with exponential moving toward target spacing
+  CBigNum bnNew;
+  bnNew.SetCompact(pindexPrev->nBits);
+
+  int64 nTargetSpacing = fProofOfStake? nStakeTargetSpacing : min(nTargetSpacingWorkMax, (int64) nStakeTargetSpacing * (1 + pindexLast->nHeight - pindexPrev->nHeight));
+  int64 nInterval = nTargetTimespan / nTargetSpacing;
+  bnNew *= ((nInterval - 1) * nTargetSpacing + nActualSpacing + nActualSpacing);
+  bnNew /= ((nInterval + 1) * nTargetSpacing);
+	
+  if (bnNew > bnTargetLimit)
+    bnNew = bnTargetLimit;
+
+  return bnNew.GetCompact();
 }
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pblock)
@@ -2612,13 +2659,24 @@ bool LoadExternalBlockFile(FILE* fileIn)
 map<uint256, CAlert> mapAlerts;
 CCriticalSection cs_mapAlerts;
 
+static string strMintMessage;// = "Info: Minting suspended due to locked wallet.";
+static string strMintWarning;
+
 string GetWarnings(string strFor)
 {
     int nPriority = 0;
     string strStatusBar;
     string strRPC;
+
     if (GetBoolArg("-testsafemode"))
         strRPC = "test";
+
+    // ppcoin: wallet lock warning for minting
+    if (strMintWarning != "")
+    {
+        nPriority = 0;
+        strStatusBar = strMintWarning;
+    }
 
     // Misc warnings like out of disk space and clock is wrong
     if (strMiscWarning != "")
@@ -3748,10 +3806,13 @@ public:
 
 uint64 nLastBlockTx = 0;
 uint64 nLastBlockSize = 0;
+int64 nLastCoinStakeSearchInterval = 0;
 
-CBlock* CreateNewBlock(CReserveKey& reservekey)
+//   fProofOfStake: try (best effort) to make a proof-of-stake block
+CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
 {
     CBlockIndex* pindexPrev = pindexBest;
+    CReserveKey reservekey(pwallet);
 
     // Create new block
     auto_ptr<CBlock> pblock(new CBlock());
@@ -3767,6 +3828,35 @@ CBlock* CreateNewBlock(CReserveKey& reservekey)
 
     // Add our coinbase tx as first transaction
     pblock->vtx.push_back(txNew);
+
+    // ppcoin: if coinstake available add coinstake tx
+    static int64 nLastCoinStakeSearchTime = GetAdjustedTime();  // only initialized at startup
+//    CBlockIndex* pindexPrev = pindexBest;
+
+    if (fProofOfStake)  // attempt to find a coinstake
+    {
+        pblock->nBits = GetNextTargetRequired(pindexPrev, true);
+        CTransaction txCoinStake;
+        int64 nSearchTime = txCoinStake.nTime; // search to current time
+        if (nSearchTime > nLastCoinStakeSearchTime)
+        {
+			// printf(">>> OK1\n");
+            if (pwallet->CreateCoinStake(*pwallet, pblock->nBits, nSearchTime-nLastCoinStakeSearchTime, txCoinStake))
+            {
+//				if (txCoinStake.nTime >= max(pindexPrev->GetMedianTimePast()+1, pindexPrev->GetBlockTime() - nMaxClockDrift))
+//                {   // make sure coinstake would meet timestamp protocol
+//                    // as it would be the same as the block timestamp
+//                    pblock->vtx[0].vout[0].SetEmpty();
+//                    pblock->vtx[0].nTime = txCoinStake.nTime;
+//                    pblock->vtx.push_back(txCoinStake);
+//                }
+            }
+            nLastCoinStakeSearchInterval = nSearchTime - nLastCoinStakeSearchTime;
+            nLastCoinStakeSearchTime = nSearchTime;
+        }
+    }
+
+    pblock->nBits = GetNextTargetRequired(pindexPrev, pblock->IsProofOfStake());
 
     // Collect memory pool transactions into the block
     int64 nFees = 0;
@@ -4027,9 +4117,11 @@ static bool fGenerateBitcoins = false;
 static bool fLimitProcessors = false;
 static int nLimitProcessors = -1;
 
-void static BitcoinMiner(CWallet *pwallet)
+void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
 {
-    printf("BitcoinMiner started\n");
+    void *scratchbuf = scrypt_buffer_alloc();
+
+    printf("CPUMiner started for proof-of-%s\n", fProofOfStake? "stake" : "work");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
 
     // Make this thread recognisable as the mining thread
@@ -4039,7 +4131,7 @@ void static BitcoinMiner(CWallet *pwallet)
     CReserveKey reservekey(pwallet);
     unsigned int nExtraNonce = 0;
 
-    while (fGenerateBitcoins)
+    while (fGenerateBitcoins || fProofOfStake)
     {
         if (fShutdown)
             return;
@@ -4048,10 +4140,16 @@ void static BitcoinMiner(CWallet *pwallet)
             Sleep(1000);
             if (fShutdown)
                 return;
-            if (!fGenerateBitcoins)
+            if ((!fGenerateBitcoins) && !fProofOfStake)
                 return;
         }
 
+        while (pwallet->IsLocked())
+        {
+            strMintWarning = strMintMessage;
+            Sleep(1000);
+        }
+        strMintWarning = "";
 
         //
         // Create new block
@@ -4059,16 +4157,36 @@ void static BitcoinMiner(CWallet *pwallet)
         unsigned int nTransactionsUpdatedLast = nTransactionsUpdated;
         CBlockIndex* pindexPrev = pindexBest;
 
-        auto_ptr<CBlock> pblock(CreateNewBlock(reservekey));
+        auto_ptr<CBlock> pblock(CreateNewBlock(pwallet, fProofOfStake));
         if (!pblock.get())
             return;
         IncrementExtraNonce(pblock.get(), pindexPrev, nExtraNonce);
 
-        printf("Running BitcoinMiner with %d transactions in block\n", pblock->vtx.size());
+        if (fProofOfStake)
+        {
+            // ppcoin: if proof-of-stake block found then process block
+            if (pblock->IsProofOfStake())
+            {
+//                if (!pblock->SignBlock(*pwalletMain))
+//                {
+//                    strMintWarning = strMintMessage;
+//                    continue;
+//                }
+                strMintWarning = "";
+                printf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
+                SetThreadPriority(THREAD_PRIORITY_NORMAL);
+                CheckWork(pblock.get(), *pwalletMain, reservekey);
+                SetThreadPriority(THREAD_PRIORITY_LOWEST);
+            }
+            Sleep(500);
+            continue;
+        }
 
+        printf("Running BitcoinMiner with %"PRIszu" transactions in block (%u bytes)\n", pblock->vtx.size(),
+               ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
         //
-        // Prebuild hash buffers
+        // Pre-build hash buffers
         //
         char pmidstatebuf[32+16]; char* pmidstate = alignup<16>(pmidstatebuf);
         char pdatabuf[128+16];    char* pdata     = alignup<16>(pdatabuf);
@@ -4077,8 +4195,7 @@ void static BitcoinMiner(CWallet *pwallet)
         FormatHashBuffers(pblock.get(), pmidstate, pdata, phash1);
 
         unsigned int& nBlockTime = *(unsigned int*)(pdata + 64 + 4);
-        unsigned int& nBlockBits = *(unsigned int*)(pdata + 64 + 8);
-        //unsigned int& nBlockNonce = *(unsigned int*)(pdata + 64 + 12);
+        unsigned int& nBlockNonce = *(unsigned int*)(pdata + 64 + 12);
 
 
         //
@@ -4086,29 +4203,45 @@ void static BitcoinMiner(CWallet *pwallet)
         //
         int64 nStart = GetTime();
         uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
+
+        unsigned int max_nonce = 0xffff0000;
+        block_header res_header;
+        uint256 result;
+
         loop
         {
             unsigned int nHashesDone = 0;
-            //unsigned int nNonceFound;
+            unsigned int nNonceFound;
 
-            uint256 thash;
-            char scratchpad[SCRYPT_SCRATCHPAD_SIZE];
-            loop
+            nNonceFound = scanhash_scrypt(
+                        (block_header *)&pblock->nVersion,
+                        scratchbuf,
+                        max_nonce,
+                        nHashesDone,
+                        UBEGIN(result),
+                        &res_header
+            );
+
+            // Check if something found
+            if (nNonceFound != (unsigned int) -1)
             {
-                scrypt_1024_1_1_256_sp(BEGIN(pblock->nVersion), BEGIN(thash), scratchpad);
-
-                if (thash <= hashTarget)
+                if (result <= hashTarget)
                 {
                     // Found a solution
+                    pblock->nNonce = nNonceFound;
+                    assert(result == pblock->GetHash());
+//                    if (!pblock->SignBlock(*pwalletMain))
+//                    {
+//                        strMintWarning = strMintMessage;
+//                        break;
+//                    }
+                    strMintWarning = "";
+
                     SetThreadPriority(THREAD_PRIORITY_NORMAL);
                     CheckWork(pblock.get(), *pwalletMain, reservekey);
                     SetThreadPriority(THREAD_PRIORITY_LOWEST);
                     break;
                 }
-                pblock->nNonce += 1;
-                nHashesDone += 1;
-                if ((pblock->nNonce & 0xFF) == 0)
-                    break;
             }
 
             // Meter hashes/sec
@@ -4130,12 +4263,10 @@ void static BitcoinMiner(CWallet *pwallet)
                         dHashesPerSec = 1000.0 * nHashCounter / (GetTimeMillis() - nHPSTimerStart);
                         nHPSTimerStart = GetTimeMillis();
                         nHashCounter = 0;
-                        string strStatus = strprintf("    %.0f khash/s", dHashesPerSec/1000.0);
                         static int64 nLogTime;
                         if (GetTime() - nLogTime > 30 * 60)
                         {
                             nLogTime = GetTime();
-                            printf("%s ", DateTimeStrFormat("%x %H:%M", GetTime()).c_str());
                             printf("hashmeter %3d CPUs %6.0f khash/s\n", vnThreadsRunning[THREAD_MINER], dHashesPerSec/1000.0);
                         }
                     }
@@ -4151,7 +4282,7 @@ void static BitcoinMiner(CWallet *pwallet)
                 return;
             if (vNodes.empty())
                 break;
-            if (pblock->nNonce >= 0xffff0000)
+            if (nBlockNonce >= 0xffff0000)
                 break;
             if (nTransactionsUpdated != nTransactionsUpdatedLast && GetTime() - nStart > 60)
                 break;
@@ -4159,16 +4290,17 @@ void static BitcoinMiner(CWallet *pwallet)
                 break;
 
             // Update nTime every few seconds
+            pblock->nTime = max(pindexPrev->GetMedianTimePast()+1, pblock->GetMaxTransactionTime());
+//            pblock->nTime = max(pblock->GetBlockTime(), pindexPrev->GetBlockTime() - nMaxClockDrift);
             pblock->UpdateTime(pindexPrev);
             nBlockTime = ByteReverse(pblock->nTime);
-            if (fTestNet)
-            {
-                // Changing pblock->nTime can change work required on testnet:
-                nBlockBits = ByteReverse(pblock->nBits);
-                hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
-            }
+
+//            if (pblock->GetBlockTime() >= (int64)pblock->vtx[0].nTime + nMaxClockDrift)
+//                break;  // need to update coinbase timestamp
         }
     }
+
+    scrypt_buffer_free(scratchbuf);
 }
 
 void static ThreadBitcoinMiner(void* parg)
@@ -4177,7 +4309,7 @@ void static ThreadBitcoinMiner(void* parg)
     try
     {
         vnThreadsRunning[THREAD_MINER]++;
-        BitcoinMiner(pwallet);
+        BitcoinMiner(pwallet, false);
         vnThreadsRunning[THREAD_MINER]--;
     }
     catch (std::exception& e) {
