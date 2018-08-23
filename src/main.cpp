@@ -10,7 +10,6 @@
 #include "net.h"
 #include "init.h"
 #include "ui_interface.h"
-#include "kernel.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -31,8 +30,6 @@ CTxMemPool mempool;
 unsigned int nTransactionsUpdated = 0;
 
 map<uint256, CBlockIndex*> mapBlockIndex;
-set<pair<COutPoint, unsigned int> > setStakeSeen;
-
 uint256 hashGenesisBlock("0x238e46f9222a2fdb20fde8ed5aee78d6b5e0f0d38d2ace3ceb5ebd6d00d99ae9");
 uint256 hashGenesisBlockTestNet("0x238e46f9222a2fdb20fde8ed5aee78d6b5e0f0d38d2ace3ceb5ebd6d00d99ae9");
 static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // starting difficulty is 1 / 2^12
@@ -54,9 +51,6 @@ CMedianFilter<int> cPeerBlockCounts(5, 0); // Amount of blocks that other nodes 
 
 map<uint256, CBlock*> mapOrphanBlocks;
 multimap<uint256, CBlock*> mapOrphanBlocksByPrev;
-
-set<pair<COutPoint, unsigned int> > setStakeSeenOrphan;
-map<uint256, uint256> mapProofOfStake;
 
 map<uint256, CDataStream*> mapOrphanTransactions;
 map<uint256, map<uint256, CDataStream*> > mapOrphanTransactionsByPrev;
@@ -905,7 +899,6 @@ unsigned int GetStakeMaxAge(unsigned int nTime)
 static int64 nTargetTimespan = 3.5 * 24 * 60 * 60; 
 static int64 nTargetSpacing = 60 * 2; 
 static int64 nInterval = nTargetTimespan / nTargetSpacing;
-static const int64 nTargetSpacingWorkMax = 120; 
 
 //
 // maximum nBits value could possible be required nTime after
@@ -1126,52 +1119,6 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlock
     }
      
     return bnNew.GetCompact();
-}
-
-unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
-{// for pos
-  CBigNum bnTargetLimit = bnProofOfWorkLimit;
-
-  if(fProofOfStake)
-  {  // Proof-of-Stake blocks has own target limit
-     bnTargetLimit = bnProofOfStakeLimit;
-  }
-
-  if (pindexLast == NULL)
-    return bnTargetLimit.GetCompact(); // genesis block
-
-  const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, fProofOfStake);
-  if (pindexPrev->pprev == NULL)
-    return bnTargetLimit.GetCompact(); // first block
-
-  const CBlockIndex* pindexPrevPrev = GetLastBlockIndex(pindexPrev->pprev, fProofOfStake);
-  if (pindexPrevPrev->pprev == NULL)
-    return bnTargetLimit.GetCompact(); // second block
-
-  int64 nActualSpacing = pindexPrev->GetBlockTime() - pindexPrevPrev->GetBlockTime();
-  if(nActualSpacing < 0)
-  {
-    nActualSpacing = 1;
-  }
-  else if(nActualSpacing > nTargetTimespan)
-  {
-    nActualSpacing = nTargetTimespan;
-  }
-
-  // ppcoin: target change every block
-  // ppcoin: retarget with exponential moving toward target spacing
-  CBigNum bnNew;
-  bnNew.SetCompact(pindexPrev->nBits);
-
-  int64 nTargetSpacing = fProofOfStake? nStakeTargetSpacing : min(nTargetSpacingWorkMax, (int64) nStakeTargetSpacing * (1 + pindexLast->nHeight - pindexPrev->nHeight));
-  int64 nInterval = nTargetTimespan / nTargetSpacing;
-  bnNew *= ((nInterval - 1) * nTargetSpacing + nActualSpacing + nActualSpacing);
-  bnNew /= ((nInterval + 1) * nTargetSpacing);
-	
-  if (bnNew > bnTargetLimit)
-    bnNew = bnTargetLimit;
-
-  return bnNew.GetCompact();
 }
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pblock)
@@ -2110,47 +2057,16 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
     CBlockIndex* pindexNew = new CBlockIndex(nFile, nBlockPos, *this);
     if (!pindexNew)
         return error("AddToBlockIndex() : new CBlockIndex failed");
-    pindexNew->phashBlock = &hash;
+    map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.insert(make_pair(hash, pindexNew)).first;
+    pindexNew->phashBlock = &((*mi).first);
     map<uint256, CBlockIndex*>::iterator miPrev = mapBlockIndex.find(hashPrevBlock);
     if (miPrev != mapBlockIndex.end())
     {
         pindexNew->pprev = (*miPrev).second;
         pindexNew->nHeight = pindexNew->pprev->nHeight + 1;
     }
-
-    // ppcoin: compute chain trust score
-//    pindexNew->bnChainTrust = (pindexNew->pprev ? pindexNew->pprev->bnChainTrust : 0) + pindexNew->GetBlockTrust();
     pindexNew->bnChainWork = (pindexNew->pprev ? pindexNew->pprev->bnChainWork : 0) + pindexNew->GetBlockWork();
 
-    // ppcoin: compute stake entropy bit for stake modifier
-    if (!pindexNew->SetStakeEntropyBit(GetStakeEntropyBit(pindexNew->nHeight)))
-        return error("AddToBlockIndex() : SetStakeEntropyBit() failed");
-
-    // ppcoin: record proof-of-stake hash value
-    if (pindexNew->IsProofOfStake())
-    {
-        if (!mapProofOfStake.count(hash))
-            return error("AddToBlockIndex() : hashProofOfStake not found in map");
-        pindexNew->hashProofOfStake = mapProofOfStake[hash];
-    }
-
-    // ppcoin: compute stake modifier
-    uint64 nStakeModifier = 0;
-    bool fGeneratedStakeModifier = false;
-    if (!ComputeNextStakeModifier(pindexNew->pprev, nStakeModifier, fGeneratedStakeModifier))
-        return error("AddToBlockIndex() : ComputeNextStakeModifier() failed");
-    pindexNew->SetStakeModifier(nStakeModifier, fGeneratedStakeModifier);
-    pindexNew->nStakeModifierChecksum = GetStakeModifierChecksum(pindexNew);
-    if (!CheckStakeModifierCheckpoints(pindexNew->nHeight, pindexNew->nStakeModifierChecksum))
-        return error("AddToBlockIndex() : Rejected by stake modifier checkpoint height=%d, modifier=0x%016"PRI64x, pindexNew->nHeight, nStakeModifier);
-
-    // Add to mapBlockIndex
-    map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.insert(make_pair(hash, pindexNew)).first;
-    if (pindexNew->IsProofOfStake())
-        setStakeSeen.insert(make_pair(pindexNew->prevoutStake, pindexNew->nStakeTime));
-    pindexNew->phashBlock = &((*mi).first);
-
-    // Write to disk block index
     CTxDB txdb;
     if (!txdb.TxnBegin())
         return false;
@@ -2159,7 +2075,6 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
         return false;
 
     // New best
-//    if (pindexNew->bnChainTrust > bnBestChainTrust)
     if (pindexNew->bnChainWork > bnBestChainWork)
         if (!SetBestChain(txdb, pindexNew))
             return false;
@@ -2297,12 +2212,6 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
         return error("ProcessBlock() : already have block %d %s", mapBlockIndex[hash]->nHeight, hash.ToString().substr(0,20).c_str());
     if (mapOrphanBlocks.count(hash))
         return error("ProcessBlock() : already have block (orphan) %s", hash.ToString().substr(0,20).c_str());
-
-    // ppcoin: check proof-of-stake
-    // Limited duplicity on stake: prevents block flood attack
-    // Duplicate stake allowed only when there is orphan child block
-//    if (pblock->IsProofOfStake() && setStakeSeen.count(pblock->GetProofOfStake()) && !mapOrphanBlocksByPrev.count(hash) && !Checkpoints::WantedByPendingSyncCheckpoint(hash))
-//        return error("ProcessBlock() : duplicate proof-of-stake (%s, %d) for block %s", pblock->GetProofOfStake().first.ToString().c_str(), pblock->GetProofOfStake().second, hash.ToString().c_str());
 
     // Preliminary checks
     if (!pblock->CheckBlock())
@@ -2703,24 +2612,13 @@ bool LoadExternalBlockFile(FILE* fileIn)
 map<uint256, CAlert> mapAlerts;
 CCriticalSection cs_mapAlerts;
 
-static string strMintMessage;// = "Info: Minting suspended due to locked wallet.";
-static string strMintWarning;
-
 string GetWarnings(string strFor)
 {
     int nPriority = 0;
     string strStatusBar;
     string strRPC;
-
     if (GetBoolArg("-testsafemode"))
         strRPC = "test";
-
-    // ppcoin: wallet lock warning for minting
-    if (strMintWarning != "")
-    {
-        nPriority = 0;
-        strStatusBar = strMintWarning;
-    }
 
     // Misc warnings like out of disk space and clock is wrong
     if (strMiscWarning != "")
@@ -3850,13 +3748,10 @@ public:
 
 uint64 nLastBlockTx = 0;
 uint64 nLastBlockSize = 0;
-int64 nLastCoinStakeSearchInterval = 0;
 
-//   fProofOfStake: try (best effort) to make a proof-of-stake block
-CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
+CBlock* CreateNewBlock(CReserveKey& reservekey)
 {
     CBlockIndex* pindexPrev = pindexBest;
-    CReserveKey reservekey(pwallet);
 
     // Create new block
     auto_ptr<CBlock> pblock(new CBlock());
@@ -3872,35 +3767,6 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
 
     // Add our coinbase tx as first transaction
     pblock->vtx.push_back(txNew);
-
-    // ppcoin: if coinstake available add coinstake tx
-    static int64 nLastCoinStakeSearchTime = GetAdjustedTime();  // only initialized at startup
-//    CBlockIndex* pindexPrev = pindexBest;
-
-    if (fProofOfStake)  // attempt to find a coinstake
-    {
-        pblock->nBits = GetNextTargetRequired(pindexPrev, true);
-        CTransaction txCoinStake;
-        int64 nSearchTime = txCoinStake.nTime; // search to current time
-        if (nSearchTime > nLastCoinStakeSearchTime)
-        {
-			// printf(">>> OK1\n");
-            if (pwallet->CreateCoinStake(*pwallet, pblock->nBits, nSearchTime-nLastCoinStakeSearchTime, txCoinStake))
-            {
-//				if (txCoinStake.nTime >= max(pindexPrev->GetMedianTimePast()+1, pindexPrev->GetBlockTime() - nMaxClockDrift))
-//                {   // make sure coinstake would meet timestamp protocol
-//                    // as it would be the same as the block timestamp
-//                    pblock->vtx[0].vout[0].SetEmpty();
-//                    pblock->vtx[0].nTime = txCoinStake.nTime;
-//                    pblock->vtx.push_back(txCoinStake);
-//                }
-            }
-            nLastCoinStakeSearchInterval = nSearchTime - nLastCoinStakeSearchTime;
-            nLastCoinStakeSearchTime = nSearchTime;
-        }
-    }
-
-    pblock->nBits = GetNextTargetRequired(pindexPrev, pblock->IsProofOfStake());
 
     // Collect memory pool transactions into the block
     int64 nFees = 0;
@@ -4120,7 +3986,7 @@ void FormatHashBuffers(CBlock* pblock, char* pmidstate, char* pdata, char* phash
 
 bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
 {
-    uint256 hash = pblock->GetHash();
+    uint256 hash = pblock->GetPoWHash();
     uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
 
     if (hash > hashTarget)
@@ -4161,9 +4027,9 @@ static bool fGenerateBitcoins = false;
 static bool fLimitProcessors = false;
 static int nLimitProcessors = -1;
 
-void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
+void static BitcoinMiner(CWallet *pwallet)
 {
-    printf("CPUMiner started for proof-of-%s\n", fProofOfStake? "stake" : "work");
+    printf("BitcoinMiner started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
 
     // Make this thread recognisable as the mining thread
@@ -4182,16 +4048,10 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             Sleep(1000);
             if (fShutdown)
                 return;
-            if ((!fGenerateBitcoins) && !fProofOfStake)
+            if (!fGenerateBitcoins)
                 return;
         }
 
-        while (pwallet->IsLocked())
-        {
-            strMintWarning = strMintMessage;
-            Sleep(1000);
-        }
-        strMintWarning = "";
 
         //
         // Create new block
@@ -4199,30 +4059,10 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
         unsigned int nTransactionsUpdatedLast = nTransactionsUpdated;
         CBlockIndex* pindexPrev = pindexBest;
 
-        auto_ptr<CBlock> pblock(CreateNewBlock(pwallet, fProofOfStake));
+        auto_ptr<CBlock> pblock(CreateNewBlock(reservekey));
         if (!pblock.get())
             return;
         IncrementExtraNonce(pblock.get(), pindexPrev, nExtraNonce);
-
-        if (fProofOfStake)
-        {
-            // ppcoin: if proof-of-stake block found then process block
-            if (pblock->IsProofOfStake())
-            {
-//                if (!pblock->SignBlock(*pwalletMain))
-//                {
-//                    strMintWarning = strMintMessage;
-//                    continue;
-//                }
-                strMintWarning = "";
-                printf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
-                SetThreadPriority(THREAD_PRIORITY_NORMAL);
-                CheckWork(pblock.get(), *pwalletMain, reservekey);
-                SetThreadPriority(THREAD_PRIORITY_LOWEST);
-            }
-            Sleep(500);
-            continue;
-        }
 
         printf("Running BitcoinMiner with %d transactions in block\n", pblock->vtx.size());
 
@@ -4337,7 +4177,7 @@ void static ThreadBitcoinMiner(void* parg)
     try
     {
         vnThreadsRunning[THREAD_MINER]++;
-        BitcoinMiner(pwallet, false);
+        BitcoinMiner(pwallet);
         vnThreadsRunning[THREAD_MINER]--;
     }
     catch (std::exception& e) {
