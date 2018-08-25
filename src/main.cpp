@@ -2178,11 +2178,15 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot) const
 
     // Check timestamp
     if (GetBlockTime() > GetAdjustedTime() + 2 * 60 * 60)
-        return error("CheckBlock() : block timestamp too far in the future");
+      return error("CheckBlock() : block timestamp too far in the future");
 
     // First transaction must be coinbase, the rest must not be
     if (vtx.empty() || !vtx[0].IsCoinBase())
-        return DoS(100, error("CheckBlock() : first tx is not coinbase"));
+    {
+      printf(" ** checkblock not coinbase: vtx[0].size() =%i\n",vtx[0].vin.size());
+      return DoS(100, error("CheckBlock() : first tx is not coinbase"));
+    }
+
     for (unsigned int i = 1; i < vtx.size(); i++)
         if (vtx[i].IsCoinBase())
             return DoS(100, error("CheckBlock() : more than one coinbase"));
@@ -2207,12 +2211,15 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot) const
     // Check transactions
     BOOST_FOREACH(const CTransaction& tx, vtx)
     {
-        if (!tx.CheckTransaction())
-            return DoS(tx.nDoS, error("CheckBlock() : CheckTransaction failed"));
+      if (!tx.CheckTransaction())
+        return DoS(tx.nDoS, error("CheckBlock() : CheckTransaction failed"));
 
-        // ppcoin: check transaction timestamp
-        if (GetBlockTime() < (int64)tx.nTime)
-            return DoS(50, error("CheckBlock() : block timestamp earlier than transaction timestamp"));
+      // ppcoin: check transaction timestamp
+      if (GetBlockTime() < (int64)tx.nTime)
+      {
+        printf(" ** getblocktime() =%u  tx.nTime=%u\n", (int64)GetBlockTime(), (int64)tx.nTime);
+        return DoS(50, error("ppc CheckBlock() : block timestamp earlier than transaction timestamp"));
+      }
     }
 
     // Check for duplicate txids. This is caught by ConnectInputs(),
