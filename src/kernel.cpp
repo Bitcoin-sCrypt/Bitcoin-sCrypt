@@ -20,7 +20,8 @@ unsigned int nModifierInterval = MODIFIER_INTERVAL;
 // Hard checkpoints of stake modifiers to ensure they are deterministic
 static std::map<int, unsigned int> mapStakeModifierCheckpoints =
     boost::assign::map_list_of
-    (     0, 0xfd11f4e7u )
+//    (     0, 0xfd11f4e7u )
+    (     NULL, NULL )
     ;
 
 // Get time weight
@@ -30,7 +31,8 @@ int64 GetWeight(int64 nIntervalBeginning, int64 nIntervalEnd)
 	// this change increases active coins participating the hash and helps
 	// to secure the network when proof-of-stake difficulty is low
 
-    return min(nIntervalEnd - nIntervalBeginning - nStakeMinAge, (int64)nStakeMaxAge);
+//    return min(nIntervalEnd - nIntervalBeginning - nStakeMinAge, (int64)nStakeMaxAge);
+  return min(nIntervalEnd - nIntervalBeginning - GetStakeMinAge(nIntervalEnd), (int64)GetStakeMaxAge(nIntervalEnd));
 }
 
 // Get the last stake modifier and its generation time from a given block
@@ -60,7 +62,9 @@ static int64 GetStakeModifierSelectionInterval()
 {
     int64 nSelectionInterval = 0;
     for (int nSection=0; nSection<64; nSection++)
+	{
         nSelectionInterval += GetStakeModifierSelectionIntervalSection(nSection);
+	}
     return nSelectionInterval;
 }
 
@@ -232,6 +236,7 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
     nStakeModifierTime = pindexFrom->GetBlockTime();
     int64 nStakeModifierSelectionInterval = GetStakeModifierSelectionInterval();
     const CBlockIndex* pindex = pindexFrom;
+
     // loop to find the stake modifier later by a selection interval
     while (nStakeModifierTime < pindexFrom->GetBlockTime() + nStakeModifierSelectionInterval)
     {

@@ -10,6 +10,9 @@
 #include "net.h"
 #include "init.h"
 #include "ui_interface.h"
+#include "kernel.h"
+#include "scrypt_mine.h"
+#include "util.h" 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -2160,7 +2163,7 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
 
 
 
-bool CBlock::CheckBlock() const
+bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot) const
 {
     // These are checks that are independent of context
     // that can be verified before saving an orphan block.
@@ -2184,10 +2187,33 @@ bool CBlock::CheckBlock() const
         if (vtx[i].IsCoinBase())
             return DoS(100, error("CheckBlock() : more than one coinbase"));
 
+    // ppcoin: only the second transaction can be the optional coinstake
+    for (unsigned int i = 2; i < vtx.size(); i++)
+        if (vtx[i].IsCoinStake())
+            return DoS(100, error("CheckBlock() : coinstake in wrong position"));
+
+    // ppcoin: coinbase output should be empty if proof-of-stake block
+    if (IsProofOfStake() && (vtx[0].vout.size() != 1 || !vtx[0].vout[0].IsEmpty()))
+        return error("CheckBlock() : coinbase output not empty for proof-of-stake block");
+
+    // Check coinbase timestamp
+    // if (GetBlockTime() > (int64)vtx[0].nTime + nMaxClockDrift)
+    //    return DoS(50, error("CheckBlock() : coinbase timestamp is too early"));
+
+    // Check coinstake timestamp
+    if (IsProofOfStake() && !CheckCoinStakeTimestamp(GetBlockTime(), (int64)vtx[1].nTime))
+        return DoS(50, error("CheckBlock() : coinstake timestamp violation nTimeBlock=%"PRI64d" nTimeTx=%u", GetBlockTime(), vtx[1].nTime));
+
     // Check transactions
     BOOST_FOREACH(const CTransaction& tx, vtx)
+    {
         if (!tx.CheckTransaction())
             return DoS(tx.nDoS, error("CheckBlock() : CheckTransaction failed"));
+
+        // ppcoin: check transaction timestamp
+        if (GetBlockTime() < (int64)tx.nTime)
+            return DoS(50, error("CheckBlock() : block timestamp earlier than transaction timestamp"));
+    }
 
     // Check for duplicate txids. This is caught by ConnectInputs(),
     // but catching it earlier avoids a potential DoS attack:
@@ -2210,6 +2236,10 @@ bool CBlock::CheckBlock() const
     // Check merkleroot
     if (hashMerkleRoot != BuildMerkleTree())
         return DoS(100, error("CheckBlock() : hashMerkleRoot mismatch"));
+
+    // ppcoin: check block signature
+//    if (!CheckBlockSignature())
+//        return DoS(100, error("CheckBlock() : bad block signature"));
 
     return true;
 }

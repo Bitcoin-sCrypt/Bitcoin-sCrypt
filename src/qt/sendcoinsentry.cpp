@@ -17,13 +17,13 @@ SendCoinsEntry::SendCoinsEntry(QWidget *parent) :
 {
     ui->setupUi(this);
 
-#ifdef Q_WS_MAC
+#ifdef Q_OS_MAC
     ui->payToLayout->setSpacing(4);
 #endif
 #if QT_VERSION >= 0x040700
     /* Do not move this to the XML file, Qt before 4.7 will choke on it */
     ui->addAsLabel->setPlaceholderText(tr("Enter a label for this address to add it to your address book"));
-    ui->payTo->setPlaceholderText(tr("Enter a Bitcoin-sCrypt address (they start with an '1')"));
+    ui->payTo->setPlaceholderText(tr("Enter a valid LitecoinPlus address"));
 #endif
     setFocusPolicy(Qt::TabFocus);
     setFocusProxy(ui->payTo);
@@ -72,7 +72,7 @@ void SendCoinsEntry::setModel(WalletModel *model)
     if(model && model->getOptionsModel())
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
 
-    connect(ui->payAmount, SIGNAL(textChanged()), this, SIGNAL(payAmountChanged()));
+	connect(ui->payAmount, SIGNAL(textChanged()), this, SIGNAL(payAmountChanged()));
     clear();
 }
 
@@ -138,12 +138,13 @@ SendCoinsRecipient SendCoinsEntry::getValue()
 
 QWidget *SendCoinsEntry::setupTabChain(QWidget *prev)
 {
-    QWidget::setTabOrder(prev, ui->payTo);
+	QWidget::setTabOrder(prev, ui->payTo);
     QWidget::setTabOrder(ui->payTo, ui->addressBookButton);
     QWidget::setTabOrder(ui->addressBookButton, ui->pasteButton);
     QWidget::setTabOrder(ui->pasteButton, ui->deleteButton);
     QWidget::setTabOrder(ui->deleteButton, ui->addAsLabel);
-    return ui->payAmount->setupTabChain(ui->addAsLabel);
+
+	return ui->payAmount->setupTabChain(ui->addAsLabel);
 }
 
 void SendCoinsEntry::setValue(const SendCoinsRecipient &value)
