@@ -459,12 +459,11 @@ public:
     (
         READWRITE(this->nVersion);
         nVersion = this->nVersion;
-      if(nBestHeight>POS_START_BLOCK)
-        READWRITE(nTime);
-
         READWRITE(vin);
         READWRITE(vout);
         READWRITE(nLockTime);
+      if(nBestHeight>POS_START_BLOCK)
+        READWRITE(nTime);
     )
 
     void SetNull()
@@ -474,6 +473,7 @@ public:
         vout.clear();
         nLockTime = 0;
         nDoS = 0;  // Denial-of-service prevention
+        nTime = GetAdjustedTime();
     }
 
     bool IsNull() const
