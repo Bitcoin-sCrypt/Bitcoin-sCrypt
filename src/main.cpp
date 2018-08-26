@@ -2217,8 +2217,11 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot) const
       // ppcoin: check transaction timestamp
       if (GetBlockTime() < (int64)tx.nTime)
       {
-        printf(" ** getblocktime() =%u  tx.nTime=%u\n", (int64)GetBlockTime(), (int64)tx.nTime);
-        return DoS(50, error("ppc CheckBlock() : block timestamp earlier than transaction timestamp"));
+        if ((int64)tx.nTime > 0 )
+        {
+          printf(" ** getblocktime() =%u  tx.nTime=%u\n", (int64)GetBlockTime(), (int64)tx.nTime);
+          return DoS(50, error("ppc CheckBlock() : block timestamp earlier than transaction timestamp"));
+        }
       }
     }
 
