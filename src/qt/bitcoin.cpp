@@ -82,6 +82,7 @@ static void ThreadSafeHandleURI(const std::string& strURI)
                                Q_ARG(QString, QString::fromStdString(strURI)));
 }
 
+// find splash font color here
 static void InitMessage(const std::string &message)
 {
     if(splashref)
@@ -225,6 +226,9 @@ int main(int argc, char *argv[])
 
 //    QSplashScreen splash(QPixmap(":/images/splash"),Qt::WindowStaysOnTopHint);
       QSplashScreen splash(QPixmap(":/images/splash"), Qt::WindowStaysOnTopHint);
+    // keeps splashscreen on top
+    splash.setEnabled(false);
+
 //    QSplashScreen splash(QPixmap(":/images/splash"),Qt::Popup);
     if (GetBoolArg("-splash", true) && !GetBoolArg("-min"))
     {
