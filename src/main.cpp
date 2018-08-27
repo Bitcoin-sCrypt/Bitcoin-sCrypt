@@ -2220,7 +2220,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot) const
         if ((int64)tx.nTime > 0 )
         {
           printf(" ** getblocktime() =%u  tx.nTime=%u\n", (int64)GetBlockTime(), (int64)tx.nTime);
-          return DoS(50, error("ppc CheckBlock() : block timestamp earlier than transaction timestamp"));
+//          return DoS(50, error("ppc CheckBlock() : block timestamp earlier than transaction timestamp"));
         }
       }
     }
