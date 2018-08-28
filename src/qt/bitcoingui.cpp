@@ -68,6 +68,14 @@ extern CWallet *pwalletMain;
 extern int64 nLastCoinStakeSearchInterval;
 extern unsigned int nStakeTargetSpacing;
 static QSplashScreen *splashref;
+extern BitcoinGUI *guiref;
+
+void updateBitcoinGUISplashMessage(char *message)
+{
+	if (guiref) {
+		guiref-> splashMessage(_(message), true);
+	}
+}
 
 BitcoinGUI::BitcoinGUI(QWidget *parent):
     QMainWindow(parent),
@@ -1153,12 +1161,17 @@ void BitcoinGUI::zapWallet()
   QMessageBox::warning(this, tr("Zap Wallet Finished."), tr("Please restart your wallet for changes to take effect."));
 }
 
-void BitcoinGUI::splashMessage(const std::string &message)
+void BitcoinGUI::splashMessage(const std::string &message, bool quickSleep)
 {
   if(splashref)
   {
-    splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(120,80,25));
+    splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(0xfce2cc));
     QApplication::instance()->processEvents();
+	if (quickSleep) {
+		Sleep(50);
+	} else {
+		Sleep(500);
+	}
   }
 }
 

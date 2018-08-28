@@ -37,7 +37,9 @@ class CDBEnv
 private:
     bool fDetachDB;
     bool fDbEnvInit;
+    bool fMockDb;
     boost::filesystem::path pathEnv;
+    std::string strPath;
 
     void EnvShutdown();
 
@@ -49,6 +51,27 @@ public:
 
     CDBEnv();
     ~CDBEnv();
+    void MakeMock();
+    bool IsMock() { return fMockDb; };
+
+    /*
+     * Verify that database file strFile is OK. If it is not,
+     * call the callback to try to recover.
+     * This must be called BEFORE strFile is opened.
+     * Returns true if strFile is OK.
+     */
+    enum VerifyResult { VERIFY_OK, RECOVER_OK, RECOVER_FAIL };
+    VerifyResult Verify(std::string strFile, bool (*recoverFunc)(CDBEnv& dbenv, std::string strFile));
+    /*
+     * Salvage data from a file that Verify says is bad.
+     * fAggressive sets the DB_AGGRESSIVE flag (see berkeley DB->verify() method documentation).
+     * Appends binary key/value pairs to vResult, returns true if successful.
+     * NOTE: reads the entire database into memory, so cannot be used
+     * for huge databases.
+     */
+    typedef std::pair<std::vector<unsigned char>, std::vector<unsigned char> > KeyValPair;
+    bool Salvage(std::string strFile, bool fAggressive, std::vector<KeyValPair>& vResult);
+
     bool Open(boost::filesystem::path pathEnv_);
     void Close();
     void Flush(bool fShutdown);
@@ -57,6 +80,7 @@ public:
     bool GetDetach() { return fDetachDB; }
 
     void CloseDb(const std::string& strFile);
+    bool RemoveDb(const std::string& strFile);
 
     DbTxn *TxnBegin(int flags=DB_TXN_WRITE_NOSYNC)
     {
@@ -79,6 +103,7 @@ protected:
     std::string strFile;
     DbTxn *activeTxn;
     bool fReadOnly;
+	void *statData;
 
     explicit CDB(const char* pszFile, const char* pszMode="r+");
     ~CDB() { Close(); }
