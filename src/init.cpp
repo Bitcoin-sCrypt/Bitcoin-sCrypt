@@ -673,8 +673,16 @@ bool AppInit2()
             printf("%s", strErrors.str().c_str());
             return InitError(strErrors.str());
         }
+        else if (nLoadWalletRet == DB_NONCRITICAL_ERROR)
+        {
+          strErrors << _("Error non critacal: errror loading wallet.dat ") << "\n";
+        }
+        else if (nLoadWalletRet == DB_LOAD_FAIL)
+        {
+          strErrors << _("Error db load fail: loading wallet.dat ") << "\n";
+        }
         else
-            strErrors << _("Error loading wallet.dat") << "\n";
+            strErrors << _("Error loading wallet.dat ") << nLoadWalletRet << "\n";
     }
 
     if (GetBoolArg("-upgradewallet", fFirstRun))

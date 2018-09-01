@@ -193,6 +193,7 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         // Taking advantage of the fact that pair serialization
         // is just the two items serialized one after the other
         ssKey >> strType;
+//printf("ReadKeyValue:  strtype =%s\n", strType.c_str());
         if (strType == "name")
         {
             string strAddress;
@@ -236,13 +237,13 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
             if (wtx.nOrderPos == -1)
                 fAnyUnordered = true;
 
-            //// debug print
-            //printf("LoadWallet  %s\n", wtx.GetHash().ToString().c_str());
-            //printf(" %12"PRI64d"  %s  %s  %s\n",
-            //    wtx.vout[0].nValue,
-            //    DateTimeStrFormat("%x %H:%M:%S", wtx.GetBlockTime()).c_str(),
-            //    wtx.hashBlock.ToString().substr(0,20).c_str(),
-            //    wtx.mapValue["message"].c_str());
+            // debug print
+            printf("LoadWallet  %s\n", wtx.GetHash().ToString().c_str());
+//            printf(" %12"PRI64d"  /*%s*/  %s  %s\n",
+//                wtx.vout[0].nValue,
+//                //DateTimeStrFormat("%x %H:%M:%S", wtx.GetBlockTime()).c_str(),
+//                wtx.hashBlock.ToString().substr(0,20).c_str(),
+//                wtx.mapValue["message"].c_str());
         }
         else if (strType == "acentry")
         {
@@ -376,6 +377,7 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         }
     } catch (...)
     {
+printf("ReadKeyValue catch:  strtype =%s\n", strType.c_str());
         return false;
     }
     return true;
@@ -440,8 +442,10 @@ DBErrors CWalletDB::LoadWallet(CWallet* pwallet)
                     result = DB_CORRUPT;
                 else
                 {
-                    // Leave other errors alone, if we try to fix them we might make things worse.
-                    fNoncriticalErrors = true; // ... but do warn the user there is something wrong.
+printf("DBLOadWallet: non critical error -> %s\n",strType.c_str());
+                    // Leave other errors alone,
+                    // if we try to fix them we might make things worse.
+//                    fNoncriticalErrors = true; // ... but warn user there is something wrong.
                     if (strType == "tx")
                         // Rescan if there is a bad transaction record:
                         SoftSetBoolArg("-rescan", true);

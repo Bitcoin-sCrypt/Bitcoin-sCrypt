@@ -568,6 +568,10 @@ bool CTxDB::LoadBlockIndex()
     {
         CBlockIndex* pindex = item.second;
         pindex->bnChainWork = (pindex->pprev ? pindex->pprev->bnChainWork : 0) + pindex->GetBlockWork();
+        // ppcoin: calculate stake modifier checksum
+        pindex->nStakeModifierChecksum = GetStakeModifierChecksum(pindex);
+        if (!CheckStakeModifierCheckpoints(pindex->nHeight, pindex->nStakeModifierChecksum))
+            return error("CTxDB::LoadBlockIndex() : Failed stake modifier checkpoint height=%d, modifier=0x%016"PRI64x, pindex->nHeight, pindex->nStakeModifier);
     }
 
     // Load hashBestChain pointer to end of best chain
@@ -589,6 +593,11 @@ bool CTxDB::LoadBlockIndex()
 //    mess="best chain height "+boost::to_string(nBestHeight);
     sprintf(pString, _("best chain height %d").c_str(), nBestHeight);
     uiInterface.InitMessage(pString);
+
+    // ppcoin: load hashSyncCheckpoint
+//    if (!ReadSyncCheckpoint(Checkpoints::hashSyncCheckpoint))
+//        return error("CTxDB::LoadBlockIndex() : hashSyncCheckpoint not loaded");
+//    printf("LoadBlockIndex(): synchronized checkpoint %s\n", Checkpoints::hashSyncCheckpoint.ToString().c_str());
 
     // Load bnBestInvalidWork, OK if it doesn't exist
     ReadBestInvalidWork(bnBestInvalidWork);
@@ -794,6 +803,13 @@ bool CTxDB::LoadBlockIndexGuts()
             pindexNew->nTime          = diskindex.nTime;
             pindexNew->nBits          = diskindex.nBits;
             pindexNew->nNonce         = diskindex.nNonce;
+            pindexNew->nMint          = diskindex.nMint;
+//            pindexNew->nMoneySupply   = diskindex.nMoneySupply;
+            pindexNew->nFlags         = diskindex.nFlags;
+            pindexNew->nStakeModifier = diskindex.nStakeModifier;
+            pindexNew->prevoutStake   = diskindex.prevoutStake;
+            pindexNew->nStakeTime     = diskindex.nStakeTime;
+            pindexNew->hashProofOfStake = diskindex.hashProofOfStake;
 
             tempcount ++;
             if(tempcount>=1000)
@@ -811,6 +827,10 @@ bool CTxDB::LoadBlockIndexGuts()
 
             if (!pindexNew->CheckIndex())
                 return error("LoadBlockIndex() : CheckIndex failed at %d", pindexNew->nHeight);
+
+            // ppcoin: build setStakeSeen
+//            if (pindexNew->IsProofOfStake())
+//                setStakeSeen.insert(make_pair(pindexNew->prevoutStake, pindexNew->nStakeTime));
         }
         else
         {

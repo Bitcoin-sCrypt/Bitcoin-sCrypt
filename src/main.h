@@ -462,8 +462,8 @@ public:
         READWRITE(vin);
         READWRITE(vout);
         READWRITE(nLockTime);
-      if(nBestHeight>POS_START_BLOCK)
-        READWRITE(nTime);
+        if(nBestHeight>POS_START_BLOCK)
+          READWRITE(nTime);
     )
 
     void SetNull()
