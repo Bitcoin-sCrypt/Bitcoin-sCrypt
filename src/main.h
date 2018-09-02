@@ -439,12 +439,14 @@ typedef std::map<uint256, std::pair<CTxIndex, CTransaction> > MapPrevTx;
 class CTransaction
 {
 public:
-    static const int CURRENT_VERSION=1;
+    static const int POW_VERSION = 1;
+    static const int POS_VERSION = 2;
     int nVersion;
-    unsigned int nTime;
     std::vector<CTxIn> vin;
     std::vector<CTxOut> vout;
     unsigned int nLockTime;
+
+    unsigned int nTime;
 
     // Denial-of-service detection:
     mutable int nDoS;
@@ -462,13 +464,17 @@ public:
         READWRITE(vin);
         READWRITE(vout);
         READWRITE(nLockTime);
-        if(nBestHeight>POS_START_BLOCK)
+        if(this->nVersion > POW_VERSION) 
           READWRITE(nTime);
     )
 
     void SetNull()
     {
-        nVersion = CTransaction::CURRENT_VERSION;
+        if(nBestHeight >0) //starting with genesis
+          nVersion = CTransaction::POS_VERSION;
+        else
+          nVersion = CTransaction::POW_VERSION;
+
         vin.clear();
         vout.clear();
         nLockTime = 0;
@@ -847,7 +853,7 @@ class CBlock
 {
 public:
     // header
-    static const int CURRENT_VERSION=1;
+    static const int CURRENT_VERSION=2;
     int nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;

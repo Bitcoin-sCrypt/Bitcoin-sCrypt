@@ -283,7 +283,7 @@ bool CTransaction::ReadFromDisk(COutPoint prevout)
 
 bool CTransaction::IsStandard() const
 {
-    if (nVersion > CTransaction::CURRENT_VERSION)
+    if (nVersion > CTransaction::POS_VERSION)
         return false;
 
     BOOST_FOREACH(const CTxIn& txin, vin)
@@ -2029,9 +2029,9 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
         }
         if (nUpgraded > 0)
             printf("SetBestChain: %d of last 100 blocks above version %d\n", nUpgraded, CBlock::CURRENT_VERSION);
-	//        if (nUpgraded > 100/2)
-            // strMiscWarning is read by GetWarnings(), called by Qt and the JSON-RPC code to warn the user:
-	//            strMiscWarning = _("Warning: this version is obsolete, upgrade required");
+	if (nUpgraded > 100/2)
+// strMiscWarning is read by GetWarnings(), called by Qt and the JSON-RPC code to warn the user:
+	strMiscWarning = _("Warning: this version is obsolete, upgrade required");
     }
 
     std::string strCmd = GetArg("-blocknotify", "");
@@ -2460,7 +2460,7 @@ bool LoadBlockIndex(bool fAllowNew)
         pchMessageStart[1] = 0xc0;
         pchMessageStart[2] = 0xb8;
         pchMessageStart[3] = 0xdb;
-        hashGenesisBlock = uint256("0x92af2d22eac841f968efa1ab6623bb3e97ec7036f3b5c3c497e1f373701cc0d3");
+        hashGenesisBlock = uint256 ("0x92af2d22eac841f968efa1ab6623bb3e97ec7036f3b5c3c497e1f373701cc0d3");
     }
 
     //
@@ -2504,9 +2504,9 @@ bool LoadBlockIndex(bool fAllowNew)
         }
 
         //// debug print
-        printf("%s\n", block.GetHash().ToString().c_str());
-        printf("%s\n", hashGenesisBlock.ToString().c_str());
-        printf("%s\n", block.hashMerkleRoot.ToString().c_str());
+        printf("block hash %s\n", block.GetHash().ToString().c_str());
+        printf("genesis    %s\n", hashGenesisBlock.ToString().c_str());
+        printf("merkle     %s\n", block.hashMerkleRoot.ToString().c_str());
         assert(block.hashMerkleRoot == uint256("0x2404c70af828150d7f52c11a90d2997c5de64274d7d88b6684e6e24aff8f0b93"));
 
         // If genesis block hash does not match, then generate new genesis hash.
