@@ -1118,10 +1118,13 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlock
     bnNew /= nTargetTimespan;
 	
 	// debug print
-//    printf("DarkGravityWave3 RETARGET\n");
-//    printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nTargetTimespan, nActualTimespan);
-//    printf("Before: %08x  %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString().c_str());
-//    printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
+    if (fDebug)
+    {
+      printf("DarkGravityWave3 RETARGET\n");
+      printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nTargetTimespan, nActualTimespan);
+      printf("Before: %08x  %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString().c_str());
+      printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
+   }
 
     if (bnNew > bnProofOfWorkLimit){
         bnNew = bnProofOfWorkLimit;
@@ -1133,11 +1136,8 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlock
 // for pos
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
-  CBigNum bnTargetLimit = bnProofOfWorkLimit;
-  if(fProofOfStake)
-  {
-    bnTargetLimit = bnProofOfStakeLimit;
-  }
+  CBigNum bnTargetLimit = bnProofOfStakeLimit;
+
   if (pindexLast == NULL)
     return bnTargetLimit.GetCompact(); // genesis block
 
@@ -1175,10 +1175,19 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 }
 
 
-unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pblock)
+unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pblock,bool fProofOfStake)
 {
-  if (pindexLast->nTime > VERSION3_SWITCH_TIME)
-    return DarkGravityWave3(pindexLast, pblock);
+  if(fProofOfStake)
+  {
+//    printf("GetNextWorkRequired: checking proof of STAKE at block %i\n",pindexLast->nHeight+1);
+    return GetNextTargetRequired(pindexLast, fProofOfStake);
+  }
+//  else
+//    printf("GetNextWorkRequired: checking proof of WORK at block %i\n",pindexLast->nHeight+1);
+
+
+    if (pindexLast->nTime > VERSION3_SWITCH_TIME)
+  return DarkGravityWave3(pindexLast, pblock);
 
   if (pindexLast->nTime > VERSION2_SWITCH_TIME)
     return GetNextTargetRequired_V2(pindexLast, pblock);
@@ -1367,8 +1376,8 @@ void CBlock::UpdateTime(const CBlockIndex* pindexPrev)
     nTime = max(pindexPrev->GetMedianTimePast()+1, GetAdjustedTime());
 
     // Updating time can change work required on testnet:
-    if (fTestNet)
-        nBits = GetNextWorkRequired(pindexPrev, this);
+//    if (fTestNet)
+//        nBits = GetNextWorkRequired(pindexPrev, this);
 }
 
 
@@ -2268,9 +2277,13 @@ bool CBlock::AcceptBlock()
     CBlockIndex* pindexPrev = (*mi).second;
     int nHeight = pindexPrev->nHeight+1;
 
+    // Check proof-of-work or proof-of-stake
+    if (nBits != GetNextWorkRequired(pindexPrev, this, IsProofOfStake()))
+      return DoS(100, error("AcceptBlock() : incorrect %s", IsProofOfWork() ? "proof-of-work" : "proof-of-stake"));
+
     // Check proof of work
-    if (nBits != GetNextWorkRequired(pindexPrev, this))
-        return DoS(100, error("AcceptBlock() : incorrect proof of work"));
+//    if (nBits != GetNextWorkRequired(pindexPrev, this))
+//        return DoS(100, error("AcceptBlock() : incorrect proof of work"));
 
     // Check timestamp against prev
     if (GetBlockTime() <= pindexPrev->GetMedianTimePast())
@@ -3894,6 +3907,9 @@ public:
 //   fProofOfStake: try (best effort) to make a proof-of-stake block
 CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
 {
+    CBlockIndex* pindexPrev = pindexBest;
+    int height = pindexPrev->nHeight+1;
+
     CReserveKey reservekey(pwallet);
 
     // Create new block
@@ -3935,34 +3951,7 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
     if (mapArgs.count("-mintxfee"))
         ParseMoney(mapArgs["-mintxfee"], nMinTxFee);
 
-    // ppcoin: if coinstake available add coinstake tx
-    static int64 nLastCoinStakeSearchTime = GetAdjustedTime();  // only initialized at startup
-    CBlockIndex* pindexPrev = pindexBest;
-
-    if (fProofOfStake)  // attempt to find a coinstake
-    {
-        pblock->nBits = GetNextTargetRequired(pindexPrev, true);
-        CTransaction txCoinStake;
-        int64 nSearchTime = txCoinStake.nTime; // search to current time
-        if (nSearchTime > nLastCoinStakeSearchTime)
-        {
-			// printf(">>> OK1\n");
-            if (pwallet->CreateCoinStake(*pwallet, pblock->nBits, nSearchTime-nLastCoinStakeSearchTime, txCoinStake))
-            {
-				if (txCoinStake.nTime >= max(pindexPrev->GetMedianTimePast()+1, pindexPrev->GetBlockTime()))
-                {   // make sure coinstake would meet timestamp protocol
-                    // as it would be the same as the block timestamp
-                    pblock->vtx[0].vout[0].SetEmpty();
-                    pblock->vtx[0].nTime = txCoinStake.nTime;
-                    pblock->vtx.push_back(txCoinStake);
-                }
-            }
-            nLastCoinStakeSearchInterval = nSearchTime - nLastCoinStakeSearchTime;
-            nLastCoinStakeSearchTime = nSearchTime;
-        }
-    }
-
-    pblock->nBits = GetNextTargetRequired(pindexPrev, pblock->IsProofOfStake());
+    pblock->nBits = GetNextWorkRequired(pindexPrev, pblock.get(), fProofOfStake);
 
     // Collect memory pool transactions into the block
     int64 nFees = 0;
