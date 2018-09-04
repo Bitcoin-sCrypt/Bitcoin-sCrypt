@@ -2361,7 +2361,7 @@ Value getblocktemplate(const Array& params, bool fHelp)
         else
             strMode = "submit";
     }
-
+printf("strmode is %s\n",strMode.c_str());
     if (strMode == "template")
     {
         if (vNodes.empty())
