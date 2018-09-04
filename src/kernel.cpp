@@ -312,7 +312,12 @@ bool CheckStakeKernelHash(unsigned int nBits, const CBlock& blockFrom, unsigned 
     int64 nStakeModifierTime = 0;
 
     if (!GetKernelStakeModifier(blockFrom.GetHash(), nStakeModifier, nStakeModifierHeight, nStakeModifierTime, fPrintProofOfStake))
+	{
+printf(">>> CheckStakeKernelHash: GetKernelStakeModifier return false\n");
         return false;
+	}
+printf(">>> CheckStakeKernelHash: passed GetKernelStakeModifier\n");
+
     ss << nStakeModifier;
 
     ss << nTimeBlockFrom << nTxPrevOffset << txPrev.nTime << prevout.n << nTimeTx;
