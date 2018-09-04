@@ -2387,6 +2387,7 @@ printf("strmode is %s\n",strMode.c_str());
             // Create new block
             if(pblock)
                 delete pblock;
+printf("try to create a new block");
             pblock = CreateNewBlock(pwalletMain);
             if (!pblock)
                 throw JSONRPCError(-7, "Out of memory");
