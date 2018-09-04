@@ -2328,10 +2328,10 @@ Value getwork(const Array& params, bool fHelp)
 
 Value getblocktemplate(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() > 1)
+    if (fHelp || params.size() != 1)
         throw runtime_error(
             "getblocktemplate [params]\n"
-            "Returns data needed to construct a block to work on:\n"
+            "If [params] does not contain a \"data\" key, returns data needed to construct a block to work on:\n"
             "  \"version\" : block version\n"
             "  \"previousblockhash\" : hash of current highest block\n"
             "  \"transactions\" : contents of non-coinbase transactions that should be included in the next block\n"
@@ -2346,147 +2346,144 @@ Value getblocktemplate(const Array& params, bool fHelp)
             "  \"sizelimit\" : limit of block size\n"
             "  \"bits\" : compressed target of next block\n"
             "  \"height\" : height of the next block\n"
+            "If [params] does contain a \"data\" key, tries to solve the block and returns null if it was successful (and \"rejected\" if not)\n"
             "See https://en.bitcoin.it/wiki/BIP_0022 for full specification.");
 
-    std::string strMode = "template";
-    if (params.size() > 0)
+    const Object& oparam = params[0].get_obj();
+    std::string strMode;
     {
-        const Object& oparam = params[0].get_obj();
         const Value& modeval = find_value(oparam, "mode");
         if (modeval.type() == str_type)
             strMode = modeval.get_str();
-        else if (modeval.type() == null_type)
-        {
-            /* Do nothing */
-        }
         else
-        {        
-          printf("Invalid mode 1  mode=%s\n",strMode.c_str());
-          throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
-        }
+        if (find_value(oparam, "data").type() == null_type)
+            strMode = "template";
+        else
+            strMode = "submit";
     }
 
-    if (strMode != "template")
+    if (strMode == "template")
     {
-        printf("Invalid mode 2  mode=%s\n",strMode.c_str());
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
-    }
+        if (vNodes.empty())
+            throw JSONRPCError(-9, "Bitcoin-sCrypt server is not connected!");
 
-    if (vNodes.empty())
-        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "BTCS is not connected!");
+        if (IsInitialBlockDownload())
+            throw JSONRPCError(-10, "Bitcoin-sCrypt server is downloading blocks...");
 
-    if (IsInitialBlockDownload())
-        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "BTCS is downloading blocks...");
+        static CReserveKey reservekey(pwalletMain);
 
-    static CReserveKey reservekey(pwalletMain);
-
-    // Update block
-    static unsigned int nTransactionsUpdatedLast;
-    static CBlockIndex* pindexPrev;
-    static int64 nStart;
-    static CBlock* pblock;
-    if (pindexPrev != pindexBest ||
-        (nTransactionsUpdated != nTransactionsUpdatedLast && GetTime() - nStart > 5))
-    {
-        // Clear pindexPrev so future calls make a new block, despite any failures from here on
-        pindexPrev = NULL;
-
-        // Store the pindexBest used before CreateNewBlock, to avoid races
-        nTransactionsUpdatedLast = nTransactionsUpdated;
-        CBlockIndex* pindexPrevNew = pindexBest;
-        nStart = GetTime();
-
-        // Create new block
-        if(pblock)
+        // Update block
+        static unsigned int nTransactionsUpdatedLast;
+        static CBlockIndex* pindexPrev;
+        static int64 nStart;
+        static CBlock* pblock;
+        if (pindexPrev != pindexBest ||
+            (nTransactionsUpdated != nTransactionsUpdatedLast && GetTime() - nStart > 5))
         {
-            delete pblock;
-            pblock = NULL;
+            nTransactionsUpdatedLast = nTransactionsUpdated;
+            pindexPrev = pindexBest;
+            nStart = GetTime();
+
+            // Create new block
+            if(pblock)
+                delete pblock;
+            pblock = CreateNewBlock(pwalletMain);
+            if (!pblock)
+                throw JSONRPCError(-7, "Out of memory");
         }
-        pblock = CreateNewBlock(pwalletMain);
-        if (!pblock)
-            throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 
-        // Need to update only after we know CreateNewBlock succeeded
-        pindexPrev = pindexPrevNew;
-    }
+        // Update nTime
+        pblock->UpdateTime(pindexPrev);
+        pblock->nNonce = 0;
 
-    // Update nTime
-    pblock->UpdateTime(pindexPrev);
-    pblock->nNonce = 0;
-
-    Array transactions;
-    map<uint256, int64_t> setTxIndex;
-    int i = 0;
-    CTxDB txdb("r");
-    BOOST_FOREACH (CTransaction& tx, pblock->vtx)
-    {
-        uint256 txHash = tx.GetHash();
-        setTxIndex[txHash] = i++;
-
-        if (tx.IsCoinBase() || tx.IsCoinStake())
-            continue;
-
-        Object entry;
-
-        CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
-        ssTx << tx;
-        entry.push_back(Pair("data", HexStr(ssTx.begin(), ssTx.end())));
-
-        entry.push_back(Pair("hash", txHash.GetHex()));
-
-        MapPrevTx mapInputs;
-        map<uint256, CTxIndex> mapUnused;
-        bool fInvalid = false;
-        if (tx.FetchInputs(txdb, mapUnused, false, false, mapInputs, fInvalid))
+        Array transactions;
+        map<uint256, int64_t> setTxIndex;
+        int i = 0;
+        CTxDB txdb("r");
+        BOOST_FOREACH (CTransaction& tx, pblock->vtx)
         {
-            entry.push_back(Pair("fee", (int64_t)(tx.GetValueIn(mapInputs) - tx.GetValueOut())));
+            uint256 txHash = tx.GetHash();
+            setTxIndex[txHash] = i++;
 
-            Array deps;
-            BOOST_FOREACH (MapPrevTx::value_type& inp, mapInputs)
+            if (tx.IsCoinBase())
+                continue;
+
+            Object entry;
+
+            CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+            ssTx << tx;
+            entry.push_back(Pair("data", HexStr(ssTx.begin(), ssTx.end())));
+
+            entry.push_back(Pair("hash", txHash.GetHex()));
+
+            MapPrevTx mapInputs;
+            map<uint256, CTxIndex> mapUnused;
+            bool fInvalid = false;
+            if (tx.FetchInputs(txdb, mapUnused, false, false, mapInputs, fInvalid))
             {
-                if (setTxIndex.count(inp.first))
-                    deps.push_back(setTxIndex[inp.first]);
-            }
-            entry.push_back(Pair("depends", deps));
+                entry.push_back(Pair("fee", (int64_t)(tx.GetValueIn(mapInputs) - tx.GetValueOut())));
 
-            int64_t nSigOps = tx.GetLegacySigOpCount();
-            nSigOps += tx.GetP2SHSigOpCount(mapInputs);
-            entry.push_back(Pair("sigops", nSigOps));
+                Array deps;
+                BOOST_FOREACH (MapPrevTx::value_type& inp, mapInputs)
+                {
+                    if (setTxIndex.count(inp.first))
+                        deps.push_back(setTxIndex[inp.first]);
+                }
+                entry.push_back(Pair("depends", deps));
+
+                int64_t nSigOps = tx.GetLegacySigOpCount();
+                nSigOps += tx.GetP2SHSigOpCount(mapInputs);
+                entry.push_back(Pair("sigops", nSigOps));
+            }
+
+            transactions.push_back(entry);
         }
 
-        transactions.push_back(entry);
+        Object aux;
+        aux.push_back(Pair("flags", HexStr(COINBASE_FLAGS.begin(), COINBASE_FLAGS.end())));
+
+        uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
+
+        static Array aMutable;
+        if (aMutable.empty())
+        {
+            aMutable.push_back("time");
+            aMutable.push_back("transactions");
+            aMutable.push_back("prevblock");
+        }
+
+        Object result;
+        result.push_back(Pair("version", pblock->nVersion));
+        result.push_back(Pair("previousblockhash", pblock->hashPrevBlock.GetHex()));
+        result.push_back(Pair("transactions", transactions));
+        result.push_back(Pair("coinbaseaux", aux));
+        result.push_back(Pair("coinbasevalue", (int64_t)pblock->vtx[0].vout[0].nValue));
+        result.push_back(Pair("target", hashTarget.GetHex()));
+        result.push_back(Pair("mintime", (int64_t)pindexPrev->GetMedianTimePast()+1));
+        result.push_back(Pair("mutable", aMutable));
+        result.push_back(Pair("noncerange", "00000000ffffffff"));
+        result.push_back(Pair("sigoplimit", (int64_t)MAX_BLOCK_SIGOPS));
+        result.push_back(Pair("sizelimit", (int64_t)MAX_BLOCK_SIZE));
+        result.push_back(Pair("curtime", (int64_t)pblock->nTime));
+        result.push_back(Pair("bits", HexBits(pblock->nBits)));
+        result.push_back(Pair("height", (int64_t)(pindexPrev->nHeight+1)));
+
+        return result;
     }
-
-    Object aux;
-    aux.push_back(Pair("flags", HexStr(COINBASE_FLAGS.begin(), COINBASE_FLAGS.end())));
-
-    uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
-
-    static Array aMutable;
-    if (aMutable.empty())
+    else
+    if (strMode == "submit")
     {
-        aMutable.push_back("time");
-        aMutable.push_back("transactions");
-        aMutable.push_back("prevblock");
+        // Parse parameters
+        CDataStream ssBlock(ParseHex(find_value(oparam, "data").get_str()), SER_NETWORK, PROTOCOL_VERSION);
+        CBlock pblock;
+        ssBlock >> pblock;
+
+        bool fAccepted = ProcessBlock(NULL, &pblock);
+
+        return fAccepted ? Value::null : "rejected";
     }
 
-    Object result;
-    result.push_back(Pair("version", pblock->nVersion));
-    result.push_back(Pair("previousblockhash", pblock->hashPrevBlock.GetHex()));
-    result.push_back(Pair("transactions", transactions));
-    result.push_back(Pair("coinbaseaux", aux));
-    result.push_back(Pair("coinbasevalue", (int64_t)pblock->vtx[0].vout[0].nValue));
-    result.push_back(Pair("target", hashTarget.GetHex()));
-    result.push_back(Pair("mintime", (int64_t)pindexPrev->GetMedianTimePast()+1));
-    result.push_back(Pair("mutable", aMutable));
-    result.push_back(Pair("noncerange", "00000000ffffffff"));
-    result.push_back(Pair("sigoplimit", (int64_t)MAX_BLOCK_SIGOPS));
-    result.push_back(Pair("sizelimit", (int64_t)MAX_BLOCK_SIZE));
-    result.push_back(Pair("curtime", (int64_t)pblock->nTime));
-    result.push_back(Pair("bits", HexBits(pblock->nBits)));
-    result.push_back(Pair("height", (int64_t)(pindexPrev->nHeight+1)));
-
-    return result;
+    throw JSONRPCError(-8, "Invalid mode");
 }
 
 Value getrawmempool(const Array& params, bool fHelp)
