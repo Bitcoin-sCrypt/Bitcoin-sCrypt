@@ -2360,11 +2360,17 @@ Value getblocktemplate(const Array& params, bool fHelp)
             /* Do nothing */
         }
         else
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
+        {        
+          printf("Invalid mode 1  mode=%s\n",strMode.c_str());
+          throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
+        }
     }
 
     if (strMode != "template")
+    {
+        printf("Invalid mode 2  mode=%s\n",strMode.c_str());
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
+    }
 
     if (vNodes.empty())
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "BTCS is not connected!");
