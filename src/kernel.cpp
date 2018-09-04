@@ -259,7 +259,7 @@ printf("!pindex->pnext = %i\n",pindex->pnext);
 			}
         }
         pindex = pindex->pnext;
-printf("made it past !pindex->pnext - pnext=%i\n",pindex);
+//printf("made it past !pindex->pnext - pnext=%i\n",pindex);
         if (pindex->GeneratedStakeModifier())
         {
 printf("made it past !pindex->pnext\n");
