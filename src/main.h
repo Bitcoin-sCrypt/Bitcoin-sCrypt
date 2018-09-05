@@ -46,6 +46,7 @@ static const int64 MIN_RELAY_TX_FEE = 10000;
 static const int64 MAX_MONEY = 21000000 * COIN; // maximum number of coins
 inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 static const int COINBASE_MATURITY = 100;
+extern int nCoinbaseMaturity;
 
 static const int64 MAX_MINT_PROOF_OF_STAKE = 0.15 * COIN;	// 15% annual interest
 //static const int POS_START_BLOCK = 600000;
@@ -76,6 +77,7 @@ extern CScript COINBASE_FLAGS;
 
 extern CCriticalSection cs_main;
 extern std::map<uint256, CBlockIndex*> mapBlockIndex;
+extern std::set<std::pair<COutPoint, unsigned int> > setStakeSeen;
 extern uint256 hashGenesisBlock;
 extern uint256 hashGenesisBlockTestNet;
 extern CBlockIndex* pindexGenesisBlock;
@@ -97,6 +99,7 @@ extern int64 nTimeBestReceived;
 extern CCriticalSection cs_setpwalletRegistered;
 extern std::set<CWallet*> setpwalletRegistered;
 extern unsigned char pchMessageStart[4];
+extern std::map<uint256, CBlock*> mapOrphanBlocks;
 
 // Settings
 extern int64 nTransactionFee;
@@ -135,6 +138,7 @@ int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTi
 unsigned int GetStakeMinAge(unsigned int nTime);
 unsigned int GetStakeMaxAge(unsigned int nTime);
 unsigned int ComputeMinStake(unsigned int nBase, int64 nTime, unsigned int nBlockTime);
+uint256 WantedByOrphan(const CBlock* pblockOrphan);
 
 unsigned int ComputeMinWork(unsigned int nBase, int64 nTime);
 int GetNumBlocksOfPeers();
@@ -146,12 +150,6 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
 
 unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, const CBlock *pblock);
 unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, const CBlock *pblock);
-
-
-
-
-
-
 
 
 
@@ -866,7 +864,7 @@ public:
     std::vector<CTransaction> vtx;
 
     // ppcoin: block signature - signed by one of the coin base txout[N]'s owner
-//    std::vector<unsigned char> vchBlockSig;
+    std::vector<unsigned char> vchBlockSig;
 
     // memory only
     mutable std::vector<uint256> vMerkleTree;
@@ -1110,6 +1108,8 @@ public:
     bool CheckBlock(bool fCheckPOW=true, bool fCheckMerkleRoot=true) const;
     bool AcceptBlock();
     bool GetCoinAge(uint64& nCoinAge) const; // ppcoin: calculate total coin age spent in block
+    bool SignBlock(const CKeyStore& keystore);
+    bool CheckBlockSignature() const;
 
 private:
     bool SetBestChainInner(CTxDB& txdb, CBlockIndex *pindexNew);
@@ -1173,7 +1173,6 @@ public:
         nBlockPos = 0;
         nHeight = 0;
         bnChainWork = 0;
-
         nMint = 0;
         nMoneySupply = 0;
         nFlags = 0;
@@ -1199,7 +1198,6 @@ public:
         nBlockPos = nBlockPosIn;
         nHeight = 0;
         bnChainWork = 0;
-
         nMint = 0;
         nMoneySupply = 0;
         nFlags = 0;
@@ -1248,14 +1246,7 @@ public:
         return (int64)nTime;
     }
 
-    CBigNum GetBlockWork() const
-    {
-        CBigNum bnTarget;
-        bnTarget.SetCompact(nBits);
-        if (bnTarget <= 0)
-            return 0;
-        return (CBigNum(1)<<256) / (bnTarget+1);
-    }
+    CBigNum GetBlockTrust() const;
 
     bool IsInMainChain() const
     {

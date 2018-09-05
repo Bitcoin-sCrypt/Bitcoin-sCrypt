@@ -142,6 +142,9 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64& nStakeModif
     // if it's not old enough, return the same stake modifier
     int64 nModifierTime = 0;
     if (!GetLastStakeModifier(pindexPrev, nStakeModifier, nModifierTime))
+//      if(pindexPrev=0)
+//        pindexPrev=nStakeModifier;
+//      else
         return error("ComputeNextStakeModifier: unable to get last modifier");
     if (fDebug)
     {
@@ -236,39 +239,53 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
     int64 nStakeModifierSelectionInterval = GetStakeModifierSelectionInterval();
     const CBlockIndex* pindex = pindexFrom;
 
-printf("height %i\n",nStakeModifierHeight);
-printf("stake modifier time %"PRI64d"\n",nStakeModifierTime);
-printf("block time %"PRI64d"\n",pindexFrom->GetBlockTime());
-printf("interval %i\n",nStakeModifierSelectionInterval);
+//printf("height %i\n",nStakeModifierHeight);
+//printf("stake modifier time %"PRI64d"\n",nStakeModifierTime);
+//printf("block time          %"PRI64d"\n",pindexFrom->GetBlockTime());
+//printf("interval %i\n",nStakeModifierSelectionInterval);
 
 
     // loop to find the stake modifier later by a selection interval
     while (nStakeModifierTime < pindexFrom->GetBlockTime() + nStakeModifierSelectionInterval)
     {
+//if(nStakeModifierTime != pindexFrom->GetBlockTime())
+//{
+//  printf("height %i\n",nStakeModifierHeight);
+//  printf("stake modifier time %"PRI64d"\n",nStakeModifierTime);
+//  printf("block time          %"PRI64d"\n",pindexFrom->GetBlockTime());
+//  printf("interval %i\n",nStakeModifierSelectionInterval);
+//}
         if (!pindex->pnext)
         {   // reached best block; may happen if node is behind on block chain
-printf("!pindex->pnext = %i\n",pindex->pnext);
-            if (fPrintProofOfStake || (pindex->GetBlockTime() + nStakeMinAge - nStakeModifierSelectionInterval > GetAdjustedTime()))
+//printf("!pindex->pnext = %i\n",pindex->pnext);
+            if (fPrintProofOfStake || (pindex->GetBlockTime() + nStakeMinAge - 
+                          nStakeModifierSelectionInterval > GetAdjustedTime()))
             {
-              printf(">> nStakeModifierTime = %"PRI64d", pindexFrom->GetBlockTime() = %"PRI64d", nStakeModifierSelectionInterval = %"PRI64d"\n",nStakeModifierTime, pindexFrom->GetBlockTime(), nStakeModifierSelectionInterval);
-              return error("GetKernelStakeModifier() : reached best block %s at height %d from block %s\n",pindex->GetBlockHash().ToString().c_str(), pindex->nHeight, hashBlockFrom.ToString().c_str());
+//              printf(">> nStakeModifierTime = %"PRI64d", pindexFrom->GetBlockTime() = %"PRI64d",\
+                     nStakeModifierSelectionInterval = %"PRI64d"\n",nStakeModifierTime, \
+                     pindexFrom->GetBlockTime(), nStakeModifierSelectionInterval);
+return false;
+//              return error("GetKernelStakeModifier() : reached best block %s at height %d \
+                            from block %s\n",pindex->GetBlockHash().ToString().c_str(), \
+                            pindex->nHeight, hashBlockFrom.ToString().c_str());
             }
             else
-			{
-                return false;
-			}
+            {
+printf("return false -> !pindex->pnext = %i\n",pindex->pnext);
+              return false;
+            }
         }
         pindex = pindex->pnext;
 //printf("made it past !pindex->pnext - pnext=%i\n",pindex);
         if (pindex->GeneratedStakeModifier())
         {
-printf("made it past !pindex->pnext\n");
+//printf("made it past !pindex->pnext\n");
             nStakeModifierHeight = pindex->nHeight;
             nStakeModifierTime = pindex->GetBlockTime();
         }
     }
     nStakeModifier = pindex->nStakeModifier;
-printf("GetKernelStakeModifier: returning true\n");
+//printf("GetKernelStakeModifier: returning true\n");
     return true;
 }
 
