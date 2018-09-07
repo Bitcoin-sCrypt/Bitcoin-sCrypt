@@ -148,8 +148,10 @@ bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfStake);
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
 
-unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, const CBlock *pblock);
-unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, const CBlock *pblock);
+//unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, const CBlock *pblock);
+unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, bool fProofOfStake);
+//unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, const CBlock *pblock);
+unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, bool fProofOfStake);
 
 
 

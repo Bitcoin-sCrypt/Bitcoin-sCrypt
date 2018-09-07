@@ -1078,13 +1078,13 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, uint64 Targ
   return bnNew.GetCompact();
 }
 
-unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlock *pblock)
+unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, bool fProofOfStake)//const CBlock *pblock)
 {
     /* current difficulty formula, darkcoin - DarkGravity v3, written by Evan Duffield - evan@darkcoin.io */
     const CBlockIndex *BlockLastSolved = pindexLast;
     const CBlockIndex *BlockReading = pindexLast;
-    const CBlock *BlockCreating = pblock;
-    BlockCreating = BlockCreating;
+//    const CBlock *BlockCreating = pblock;
+//    BlockCreating = BlockCreating;
     int64 nActualTimespan = 0;
     int64 LastBlockTime = 0;
     int64 PastBlocksMin = 24;
@@ -1188,8 +1188,10 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 }
 
 
-unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pblock,bool fProofOfStake)
+//unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pblock,bool fProofOfStake)
+unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
+
 //  if(fProofOfStake)
 //  {
 //    printf("GetNextWorkRequired: checking proof of STAKE at block %i\n",pindexLast->nHeight+1);
@@ -1208,10 +1210,10 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pb
   {
     printf("GetNextWorkRequired: checking proof of WORK at block %i\n",pindexLast->nHeight+1);
     if (pindexLast->nTime > VERSION3_SWITCH_TIME)
-      return DarkGravityWave3(pindexLast, pblock);
+      return DarkGravityWave3(pindexLast, fProofOfStake);
     if (pindexLast->nTime > VERSION2_SWITCH_TIME)
-      return GetNextTargetRequired_V2(pindexLast, pblock);
-    return GetNextTargetRequired_V1(pindexLast, pblock);
+      return GetNextTargetRequired_V2(pindexLast, fProofOfStake);
+    return GetNextTargetRequired_V1(pindexLast, fProofOfStake);
   }
 
   if (pindexLast == NULL)
@@ -1249,7 +1251,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pb
   return bnNew.GetCompact();
 }
 
-unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, const CBlock *pblock)
+unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
 	if ((pindexLast->nHeight+1) > 96180)
 	{
@@ -1290,6 +1292,7 @@ unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, const CBloc
     if ((pindexLast->nHeight+1) % nInterval != 0)
     {
         // Special difficulty rule for testnet:
+/*
         if (fTestNet)
         {
             // If the new block's timestamp is more than 2* 10 minutes
@@ -1305,7 +1308,7 @@ unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, const CBloc
                 return pindex->nBits;
             }
         }
-
+*/
         return pindexLast->nBits;
     }
 
@@ -1356,7 +1359,7 @@ unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, const CBloc
     return bnNew.GetCompact();
 }
 
-unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, const CBlock *pblock)
+unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
   static const int64 BlocksTargetSpacing = 180; // 3 minutes
   unsigned int TimeDaySeconds = 60 * 60 * 24;
@@ -2362,7 +2365,8 @@ bool CBlock::AcceptBlock()
     int nHeight = pindexPrev->nHeight+1;
 
     // Check proof-of-work or proof-of-stake
-    if (nBits != GetNextWorkRequired(pindexPrev, this, IsProofOfStake()))
+//    if (nBits != GetNextWorkRequired(pindexPrev, this, IsProofOfStake()))
+    if (nBits != GetNextWorkRequired(pindexPrev, IsProofOfStake()))
       return DoS(100, error("AcceptBlock() : incorrect %s", IsProofOfWork() ? "proof-of-work" : "proof-of-stake"));
 
     // Check proof of work
@@ -4160,7 +4164,8 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
         }
     }
 
-    pblock->nBits = GetNextWorkRequired(pindexPrev, pblock.get(), fProofOfStake);
+//    pblock->nBits = GetNextWorkRequired(pindexPrev, pblock.get(), fProofOfStake);
+    pblock->nBits = GetNextWorkRequired(pindexPrev, fProofOfStake);
 
     // Collect memory pool transactions into the block
     int64 nFees = 0;
