@@ -1190,22 +1190,63 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pblock,bool fProofOfStake)
 {
-  if(fProofOfStake)
-  {
+//  if(fProofOfStake)
+//  {
 //    printf("GetNextWorkRequired: checking proof of STAKE at block %i\n",pindexLast->nHeight+1);
-    return GetNextTargetRequired(pindexLast, fProofOfStake);
-  }
+//    return GetNextTargetRequired(pindexLast, fProofOfStake);
+//  }
 //  else
 //    printf("GetNextWorkRequired: checking proof of WORK at block %i\n",pindexLast->nHeight+1);
-
-
+  int64 myTargetTimespan = 60 * 60 * 24;  // 24 hours
+  int64 myTargetSpacingWorkMax = 2 * nStakeTargetSpacing; 
+  CBigNum bnTargetLimit = bnProofOfWorkLimit;
+  if(fProofOfStake)
+  {
+    bnTargetLimit = bnProofOfStakeLimit;
+  }
+  else
+  {
+    printf("GetNextWorkRequired: checking proof of WORK at block %i\n",pindexLast->nHeight+1);
     if (pindexLast->nTime > VERSION3_SWITCH_TIME)
-  return DarkGravityWave3(pindexLast, pblock);
+      return DarkGravityWave3(pindexLast, pblock);
+    if (pindexLast->nTime > VERSION2_SWITCH_TIME)
+      return GetNextTargetRequired_V2(pindexLast, pblock);
+    return GetNextTargetRequired_V1(pindexLast, pblock);
+  }
 
-  if (pindexLast->nTime > VERSION2_SWITCH_TIME)
-    return GetNextTargetRequired_V2(pindexLast, pblock);
+  if (pindexLast == NULL)
+    return bnTargetLimit.GetCompact(); // genesis block
+ 
+   const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, fProofOfStake);
+   if (pindexPrev->pprev == NULL)
+     return bnTargetLimit.GetCompact(); // first block
+   const CBlockIndex* pindexPrevPrev = GetLastBlockIndex(pindexPrev->pprev, fProofOfStake);
+   if (pindexPrevPrev->pprev == NULL)
+     return bnTargetLimit.GetCompact(); // second block
+ 
+   int64 nActualSpacing = pindexPrev->GetBlockTime() - pindexPrevPrev->GetBlockTime();
+   if(nActualSpacing < 0)
+  {
+    nActualSpacing = 1;
+  }
 
-  return GetNextTargetRequired_V1(pindexLast, pblock);
+  else if(nActualSpacing > myTargetTimespan)
+  {
+    nActualSpacing = myTargetTimespan;
+  }
+  // ppcoin: target change every block
+  // ppcoin: retarget with exponential moving toward target spacing
+  CBigNum bnNew;
+  bnNew.SetCompact(pindexPrev->nBits);
+  int64 nTargetSpacing = fProofOfStake? nStakeTargetSpacing : min(myTargetSpacingWorkMax, (int64) nStakeTargetSpacing * (1 + pindexLast->nHeight - pindexPrev->nHeight));
+  int64 nInterval = myTargetTimespan / nTargetSpacing;
+  bnNew *= ((nInterval - 1) * nTargetSpacing + nActualSpacing + nActualSpacing);
+  bnNew /= ((nInterval + 1) * nTargetSpacing);
+	
+   if (bnNew > bnTargetLimit)
+     bnNew = bnTargetLimit;
+ 
+  return bnNew.GetCompact();
 }
 
 unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, const CBlock *pblock)
