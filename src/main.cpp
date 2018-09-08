@@ -2839,7 +2839,9 @@ void PrintBlockTree()
             pindex->nFile,
             pindex->nBlockPos,
             block.GetHash().ToString().substr(0,20).c_str(),
+            block.nBits,
             DateTimeStrFormat("%x %H:%M:%S", block.GetBlockTime()).c_str(),
+            FormatMoney(pindex->nMint).c_str(),
             block.vtx.size());
 
         PrintWallets(block);
