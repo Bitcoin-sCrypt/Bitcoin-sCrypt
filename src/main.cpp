@@ -3118,7 +3118,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
     static map<CService, CPubKey> mapReuseKey;
     RandAddSeedPerfmon();
     if (fDebug)
-        printf("ProcessMessage->received: %s (%d bytes)\n", strCommand.c_str(), vRecv.size());
+//        printf("ProcessMessage->received: %s (%d bytes)\n", strCommand.c_str(), vRecv.size());
 
     if (mapArgs.count("-dropmessagestest") && GetRand(atoi(mapArgs["-dropmessagestest"])) == 0)
     {
@@ -4619,9 +4619,15 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     uint256 hash = pblock->GetPoWHash();
     uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
 
-    if (hash > hashTarget)
-        return false;
+printf("hashtarget %s \n",hashTarget.GetHex().c_str());
+printf("hash       %s \n",hash.GetHex().c_str());
 
+
+    if (hash > hashTarget)
+    {
+printf ("CheckWork: hash too large.\n");
+      return false;
+    }
     //// debug print
     printf("BitcoinMiner:\n");
     printf("proof-of-work found  \n  hash: %s  \ntarget: %s\n", hash.GetHex().c_str(), hashTarget.GetHex().c_str());
