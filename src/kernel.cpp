@@ -271,7 +271,7 @@ return false;
             }
             else
             {
-printf("return false -> !pindex->pnext = %i\n",pindex->pnext);
+//printf("return false -> !pindex->pnext = %i\n",pindex->pnext);
               return false;
             }
         }
