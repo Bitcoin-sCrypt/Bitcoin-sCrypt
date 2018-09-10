@@ -4618,7 +4618,8 @@ printf("hashtarget %s \n",hashTarget.GetHex().c_str());
 printf("hash       %s \n",hash.GetHex().c_str());
 
 
-    if (hash > hashTarget)
+//    if (hash > hashTarget)
+    if (hash > hashTarget && pblock->IsProofOfWork())
     {
 printf ("CheckWork: hash too large.\n");
       return false;
@@ -4821,12 +4822,12 @@ printf("found a solution\n");
             // Update nTime every few seconds
             pblock->UpdateTime(pindexPrev);
             nBlockTime = ByteReverse(pblock->nTime);
-            if (fTestNet)
-            {
-                // Changing pblock->nTime can change work required on testnet:
-                nBlockBits = ByteReverse(pblock->nBits);
-                hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
-            }
+//            if (fTestNet)
+//            {
+//                // Changing pblock->nTime can change work required on testnet:
+//                nBlockBits = ByteReverse(pblock->nBits);
+//                hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
+//            }
         }
     }
 }
