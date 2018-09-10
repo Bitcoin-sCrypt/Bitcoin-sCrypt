@@ -1192,23 +1192,18 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
 
-//  if(fProofOfStake)
-//  {
-//    printf("GetNextWorkRequired: checking proof of STAKE at block %i\n",pindexLast->nHeight+1);
-//    return GetNextTargetRequired(pindexLast, fProofOfStake);
-//  }
-//  else
-//    printf("GetNextWorkRequired: checking proof of WORK at block %i\n",pindexLast->nHeight+1);
   int64 myTargetTimespan = 60 * 60 * 24;  // 24 hours
   int64 myTargetSpacingWorkMax = 2 * nStakeTargetSpacing; 
   CBigNum bnTargetLimit = bnProofOfWorkLimit;
+
   if(fProofOfStake)
   {
+//    printf("GetNextWorkRequired: checking proof of STAKE at block %i\n",pindexLast->nHeight+1);
     bnTargetLimit = bnProofOfStakeLimit;
   }
   else
   {
-    printf("GetNextWorkRequired: checking proof of WORK at block %i\n",pindexLast->nHeight+1);
+//    printf("GetNextWorkRequired: checking proof of WORK at block %i\n",pindexLast->nHeight+1);
     if (pindexLast->nTime > VERSION3_SWITCH_TIME)
       return DarkGravityWave3(pindexLast, fProofOfStake);
     if (pindexLast->nTime > VERSION2_SWITCH_TIME)
@@ -1222,6 +1217,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfSta
    const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, fProofOfStake);
    if (pindexPrev->pprev == NULL)
      return bnTargetLimit.GetCompact(); // first block
+
    const CBlockIndex* pindexPrevPrev = GetLastBlockIndex(pindexPrev->pprev, fProofOfStake);
    if (pindexPrevPrev->pprev == NULL)
      return bnTargetLimit.GetCompact(); // second block
@@ -4096,9 +4092,6 @@ public:
 //   fProofOfStake: try (best effort) to make a proof-of-stake block
 CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
 {
-    CBlockIndex* pindexPrev = pindexBest;
-    int height = pindexPrev->nHeight+1;
-
     CReserveKey reservekey(pwallet);
 
     // Create new block
@@ -4142,6 +4135,7 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
 
     // ppcoin: if coinstake available add coinstake tx
     static int64 nLastCoinStakeSearchTime = GetAdjustedTime();  // only initialized at startup
+    CBlockIndex* pindexPrev = pindexBest;
 
     if (fProofOfStake)  // attempt to find a coinstake
     {
@@ -4153,7 +4147,7 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
 			// printf(">>> OK1\n");
             if (pwallet->CreateCoinStake(*pwallet, pblock->nBits, nSearchTime-nLastCoinStakeSearchTime, txCoinStake))
             {
-				if (txCoinStake.nTime >= max(pindexPrev->GetMedianTimePast()+1, pindexPrev->GetBlockTime() - nMaxClockDrift))
+		if (txCoinStake.nTime >= max(pindexPrev->GetMedianTimePast()+1, pindexPrev->GetBlockTime() - nMaxClockDrift))
                 {   // make sure coinstake would meet timestamp protocol
                     // as it would be the same as the block timestamp
                     pblock->vtx[0].vout[0].SetEmpty();
@@ -4358,8 +4352,8 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
         nLastBlockTx = nBlockTx;
         nLastBlockSize = nBlockSize;
 
-        if (fDebug && GetBoolArg("-printpriority"))
-            printf("CreateNewBlock(): total size %"PRI64u"\n", nBlockSize);
+//        if (fDebug)
+//            printf("CreateNewBlock(): total size %"PRI64u"\n", nBlockSize);
 
         if (pblock->IsProofOfWork())
             pblock->vtx[0].vout[0].nValue = GetBlockValue(pindexPrev->nHeight+1, nFees);
@@ -4369,6 +4363,7 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
         if (pblock->IsProofOfStake())
             pblock->nTime      = pblock->vtx[1].nTime; //same as coinstake timestamp
         pblock->nTime          = max(pindexPrev->GetMedianTimePast()+1, pblock->GetMaxTransactionTime());
+        pblock->nTime          = max(pblock->GetBlockTime(), pindexPrev->GetBlockTime() - nMaxClockDrift);
         pblock->nTime          = max(pblock->GetBlockTime(), pindexPrev->GetBlockTime());
         if (pblock->IsProofOfWork())
             pblock->UpdateTime(pindexPrev);
@@ -4712,11 +4707,11 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             // ppcoin: if proof-of-stake block found then process block
             if (pblock->IsProofOfStake())
             {
-//                if (!pblock->SignBlock(*pwalletMain))
-//                {
-//                    strMintWarning = strMintMessage;
-//                    continue;
-//                }
+                if (!pblock->SignBlock(*pwalletMain))
+                {
+                    strMintWarning = strMintMessage;
+                    continue;
+                }
                 strMintWarning = "";
                 printf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
                 SetThreadPriority(THREAD_PRIORITY_NORMAL);
