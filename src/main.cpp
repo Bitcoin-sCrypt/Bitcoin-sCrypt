@@ -2518,6 +2518,7 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
             if (!IsInitialBlockDownload())
                 pfrom->AskFor(CInv(MSG_BLOCK, WantedByOrphan(pblock2)));
         }
+        return true;
     }
 
     // Store to disk
