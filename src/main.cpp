@@ -4708,6 +4708,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             return;
         IncrementExtraNonce(pblock.get(), pindexPrev, nExtraNonce);
 
+/*
         if (fProofOfStake)
         {
             // ppcoin: if proof-of-stake block found then process block
@@ -4728,6 +4729,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             continue;
         }
 
+*/
         printf("Running BitcoinMiner with %d transactions in block\n", pblock->vtx.size());
 
 
@@ -4765,6 +4767,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                 {
                     // Found a solution
 printf("found a solution\n");
+printf("CPUMiner : proof-of-%s block found %s\n", fProofOfStake? "stake" : "work", pblock->GetHash().ToString().c_str()); 
                     SetThreadPriority(THREAD_PRIORITY_NORMAL);
                     CheckWork(pblock.get(), *pwalletMain, reservekey);
                     SetThreadPriority(THREAD_PRIORITY_LOWEST);
@@ -4811,7 +4814,7 @@ printf("found a solution\n");
             // Check for stop or if block needs to be rebuilt
             if (fShutdown)
                 return;
-            if (!fGenerateBitcoins)
+            if (!fGenerateBitcoins && !fGenerateBitcoins)
                 return;
             if (fLimitProcessors && vnThreadsRunning[THREAD_MINER] > nLimitProcessors)
                 return;
