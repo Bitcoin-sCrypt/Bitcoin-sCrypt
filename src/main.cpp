@@ -2439,9 +2439,28 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
     if (mapOrphanBlocks.count(hash))
         return error("ProcessBlock() : already have block (orphan) %s", hash.ToString().substr(0,20).c_str());
 
+    // ppcoin: check proof-of-stake
+    // Limited duplicity on stake: prevents block flood attack
+    // Duplicate stake allowed only when there is orphan child block
+    if (pblock->IsProofOfStake() && setStakeSeen.count(pblock->GetProofOfStake()) && !mapOrphanBlocksByPrev.count(hash) && !Checkpoints::WantedByPendingSyncCheckpoint(hash))
+        return error("ProcessBlock() : duplicate proof-of-stake (%s, %d) for block %s", pblock->GetProofOfStake().first.ToString().c_str(), pblock->GetProofOfStake().second, hash.ToString().c_str());
+
     // Preliminary checks
     if (!pblock->CheckBlock())
         return error("ProcessBlock() : CheckBlock FAILED");
+
+    // ppcoin: verify hash target and signature of coinstake tx
+    if (pblock->IsProofOfStake())
+    {
+        uint256 hashProofOfStake = 0;
+        if (!CheckProofOfStake(pblock->vtx[1], pblock->nBits, hashProofOfStake))
+        {
+            printf("WARNING: ProcessBlock(): check proof-of-stake failed for block %s\n", hash.ToString().c_str());
+            return false; // do not error here as we expect this during initial block download
+        }
+        if (!mapProofOfStake.count(hash)) // add to mapProofOfStake
+            mapProofOfStake.insert(make_pair(hash, hashProofOfStake));
+    }
 
     CBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(mapBlockIndex);
     if (pcheckpoint && pblock->hashPrevBlock != hashBestChain)
@@ -2457,12 +2476,17 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
         CBigNum bnNewBlock;
         bnNewBlock.SetCompact(pblock->nBits);
         CBigNum bnRequired;
-        bnRequired.SetCompact(ComputeMinWork(pcheckpoint->nBits, deltaTime));
+
+	if (pblock->IsProofOfStake())
+            bnRequired.SetCompact(ComputeMinStake(GetLastBlockIndex(pcheckpoint, true)->nBits, deltaTime, pblock->nTime));
+        else
+            bnRequired.SetCompact(ComputeMinWork(GetLastBlockIndex(pcheckpoint, false)->nBits, deltaTime));
+
         if (bnNewBlock > bnRequired)
         {
             if (pfrom)
                 pfrom->Misbehaving(100);
-            return error("ProcessBlock() : block with too little proof-of-work");
+            return error("ProcessBlock() : block with too little %s", pblock->IsProofOfStake()? "proof-of-stake" : "proof-of-work");
         }
     }
 
@@ -2472,13 +2496,28 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
     {
         printf("ProcessBlock: ORPHAN BLOCK, prev=%s\n", pblock->hashPrevBlock.ToString().substr(0,20).c_str());
         CBlock* pblock2 = new CBlock(*pblock);
+        // ppcoin: check proof-of-stake
+        if (pblock2->IsProofOfStake())
+        {
+            // Limited duplicity on stake: prevents block flood attack
+            // Duplicate stake allowed only when there is orphan child block
+            if (setStakeSeenOrphan.count(pblock2->GetProofOfStake()) && !mapOrphanBlocksByPrev.count(hash) && !Checkpoints::WantedByPendingSyncCheckpoint(hash))
+                return error("ProcessBlock() : duplicate proof-of-stake (%s, %d) for orphan block %s", pblock2->GetProofOfStake().first.ToString().c_str(), pblock2->GetProofOfStake().second, hash.ToString().c_str());
+            else
+                setStakeSeenOrphan.insert(pblock2->GetProofOfStake());
+        }
         mapOrphanBlocks.insert(make_pair(hash, pblock2));
         mapOrphanBlocksByPrev.insert(make_pair(pblock2->hashPrevBlock, pblock2));
 
         // Ask this guy to fill in what we're missing
         if (pfrom)
+        {
             pfrom->PushGetBlocks(pindexBest, GetOrphanRoot(pblock2));
-        return true;
+            // ppcoin: getblocks may not obtain the ancestor block rejected
+            // earlier by duplicate-stake check so we ask for it again directly
+            if (!IsInitialBlockDownload())
+                pfrom->AskFor(CInv(MSG_BLOCK, WantedByOrphan(pblock2)));
+        }
     }
 
     // Store to disk
@@ -2499,12 +2538,18 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
             if (pblockOrphan->AcceptBlock())
                 vWorkQueue.push_back(pblockOrphan->GetHash());
             mapOrphanBlocks.erase(pblockOrphan->GetHash());
+            setStakeSeenOrphan.erase(pblockOrphan->GetProofOfStake());
             delete pblockOrphan;
         }
         mapOrphanBlocksByPrev.erase(hashPrev);
     }
 
     printf("ProcessBlock: ACCEPTED\n");
+
+    // ppcoin: if responsible for sync-checkpoint send it
+    if (pfrom && !CSyncCheckpoint::strMasterPrivKey.empty())
+        Checkpoints::SendSyncCheckpoint(Checkpoints::AutoSelectSyncCheckpoint());
+
     return true;
 }
 
@@ -4666,6 +4711,8 @@ static int nLimitProcessors = -1;
 
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
 {
+//    void *scratchbuf = scrypt_buffer_alloc();
+
     printf("CPUMiner started for proof-of-%s\n", fProofOfStake? "stake" : "work");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
 
@@ -4702,13 +4749,11 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
         unsigned int nTransactionsUpdatedLast = nTransactionsUpdated;
         CBlockIndex* pindexPrev = pindexBest;
 
-//        auto_ptr<CBlock> pblock(CreateNewBlock(reservekey));
         auto_ptr<CBlock> pblock(CreateNewBlock(pwallet, fProofOfStake));
         if (!pblock.get())
             return;
         IncrementExtraNonce(pblock.get(), pindexPrev, nExtraNonce);
 
-/*
         if (fProofOfStake)
         {
             // ppcoin: if proof-of-stake block found then process block
@@ -4729,8 +4774,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             continue;
         }
 
-*/
-        printf("Running BitcoinMiner with %d transactions in block\n", pblock->vtx.size());
+        printf("Running BitcoinMiner with %"PRIszu" transactions in block (%u bytes)\n", pblock->vtx.size(), ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
 
         //
@@ -4814,7 +4858,7 @@ printf("CPUMiner : proof-of-%s block found %s\n", fProofOfStake? "stake" : "work
             // Check for stop or if block needs to be rebuilt
             if (fShutdown)
                 return;
-            if (!fGenerateBitcoins && !fGenerateBitcoins)
+            if (!fGenerateBitcoins && !fProofOfStake)
                 return;
             if (fLimitProcessors && vnThreadsRunning[THREAD_MINER] > nLimitProcessors)
                 return;
