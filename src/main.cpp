@@ -4668,7 +4668,6 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
 printf("hashtarget %s \n",hashTarget.GetHex().c_str());
 printf("hash       %s \n",hash.GetHex().c_str());
 
-
 //    if (hash > hashTarget)
     if (hash > hashTarget && pblock->IsProofOfWork())
     {
@@ -4677,7 +4676,7 @@ printf ("CheckWork: hash too large.\n");
     }
     //// debug print
     printf("BitcoinMiner:\n");
-    printf("proof-of-work found  \n  hash: %s  \ntarget: %s\n", hash.GetHex().c_str(), hashTarget.GetHex().c_str());
+    printf("new block found  \n  hash: %s  \ntarget: %s\n", hash.GetHex().c_str(), hashTarget.GetHex().c_str());
     pblock->print();
     printf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue).c_str());
 
