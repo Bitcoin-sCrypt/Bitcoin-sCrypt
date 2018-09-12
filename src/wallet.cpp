@@ -1645,6 +1645,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         {
             if (!SignSignature(*this, *pcoin, txNew, nIn++))
                 return error("CreateCoinStake : failed to sign coinstake");
+            else
+              if(fDebug) printf("CreateCoinStake : coinstake is signed\n");
         }
 
         // Limit size
@@ -1660,7 +1662,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         }
         else
         {
-            if (fDebug && GetBoolArg("-printfee"))
+            if (fDebug)
                 printf("CreateCoinStake : fee for coinstake %s\n", FormatMoney(nMinFee).c_str());
             break;
         }

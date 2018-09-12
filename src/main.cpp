@@ -2307,7 +2307,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot) const
         return DoS(100, error("CheckBlock() : size limits failed"));
 
     // Check proof of work matches claimed amount
-    if (!CheckProofOfWork(GetPoWHash(), nBits))
+    if ( IsProofOfWork() && !CheckProofOfWork(GetPoWHash(), nBits))
 //    if (fCheckPOW && IsProofOfWork() && !CheckProofOfWork(GetHash(), nBits))
         return DoS(50, error("CheckBlock() : proof of work failed"));
 
@@ -2350,14 +2350,14 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot) const
         return DoS(tx.nDoS, error("CheckBlock() : CheckTransaction failed"));
 
       // ppcoin: check transaction timestamp
-      if (GetBlockTime() < (int64)tx.nTime)
-      {
-        if ((int64)tx.nTime > 0 )
-        {
-          printf(" ** getblocktime() =%u  tx.nTime=%u\n", (int64)GetBlockTime(), (int64)tx.nTime);
+//      if (GetBlockTime() < (int64)tx.nTime)
+//      {
+//        if ((int64)tx.nTime > 0 )
+//        {
+//          printf(" ** getblocktime() =%u  tx.nTime=%u\n", (int64)GetBlockTime(), (int64)tx.nTime);
 //          return DoS(50, error("ppc CheckBlock() : block timestamp earlier than transaction timestamp"));
-        }
-      }
+//        }
+//      }
     }
 
     // Check for duplicate txids. This is caught by ConnectInputs(),
