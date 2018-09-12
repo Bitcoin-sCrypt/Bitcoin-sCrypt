@@ -458,10 +458,21 @@ bool CTransaction::CheckTransaction() const
 
     // Check for negative or overflow output values
     int64 nValueOut = 0;
-    BOOST_FOREACH(const CTxOut& txout, vout)
+    for (unsigned int i = 0; i < vout.size(); i++)
     {
+        const CTxOut& txout = vout[i];
+
+        if (txout.IsEmpty() && !IsCoinBase() && !IsCoinStake())
+            return DoS(100, error("CTransaction::CheckTransaction() : txout empty for user transaction"));
+        // ppcoin: enforce minimum output amount
+        /*
+         if ((!txout.IsEmpty()) && txout.nValue < MIN_TXOUT_AMOUNT)
+            return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue below minimum"));
+                    */ 
+   
         if (txout.nValue < 0)
-            return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue negative"));
+           return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue negative"));
+
         if (txout.nValue > MAX_MONEY)
             return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue too high"));
         nValueOut += txout.nValue;
@@ -748,7 +759,7 @@ int CMerkleTx::GetDepthInMainChain(CBlockIndex* &pindexRet) const
 
 int CMerkleTx::GetBlocksToMaturity() const
 {
-    if (!IsCoinBase())
+    if (!(IsCoinBase() || IsCoinStake()))
         return 0;
     return max(0, (COINBASE_MATURITY+15) - GetDepthInMainChain());
 }
@@ -784,7 +795,7 @@ bool CWalletTx::AcceptWalletTransaction(CTxDB& txdb, bool fCheckInputs)
         // Add previous supporting transactions first
         BOOST_FOREACH(CMerkleTx& tx, vtxPrev)
         {
-            if (!tx.IsCoinBase())
+            if (!(tx.IsCoinBase() || tx.IsCoinStake()))
             {
                 uint256 hash = tx.GetHash();
                 if (!mempool.exists(hash) && !txdb.ContainsTx(hash))
@@ -1623,10 +1634,10 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                 return DoS(100, error("ConnectInputs() : %s prevout.n out of range %d %d %d prev tx %s\n%s", GetHash().ToString().substr(0,10).c_str(), prevout.n, txPrev.vout.size(), txindex.vSpent.size(), prevout.hash.ToString().substr(0,10).c_str(), txPrev.ToString().c_str()));
 
             // If prev is coinbase, check that it's matured
-            if (txPrev.IsCoinBase())
+            if (txPrev.IsCoinBase() || txPrev.IsCoinStake())
                 for (const CBlockIndex* pindex = pindexBlock; pindex && pindexBlock->nHeight - pindex->nHeight < COINBASE_MATURITY; pindex = pindex->pprev)
                     if (pindex->nBlockPos == txindex.pos.nBlockPos && pindex->nFile == txindex.pos.nFile)
-                        return error("ConnectInputs() : tried to spend coinbase at depth %d", pindexBlock->nHeight - pindex->nHeight);
+                        return error("ConnectInputs() : tried to spend %s at depth %d", txPrev.IsCoinBase() ? "coinbase" : "coinstake", pindexBlock->nHeight - pindex->nHeight);
 
             // Check for negative or overflow input values
             nValueIn += txPrev.vout[prevout.n].nValue;
@@ -1920,7 +1931,7 @@ bool static Reorganize(CTxDB& txdb, CBlockIndex* pindexNew)
 
         // Queue memory transactions to resurrect
         BOOST_FOREACH(const CTransaction& tx, block.vtx)
-            if (!tx.IsCoinBase())
+            if (!(tx.IsCoinBase() || tx.IsCoinStake()))
                 vResurrect.push_back(tx);
     }
 
@@ -2386,6 +2397,25 @@ bool CBlock::AcceptBlock()
     // Check that the block chain matches the known block chain up to a checkpoint
 	if (!Checkpoints::CheckBlock(nHeight, hash))
     return DoS(100, error("AcceptBlock() : rejected by checkpoint lockin at %d", nHeight));
+
+/*
+    // ppcoin: check that the block satisfies synchronized checkpoint
+    if (!Checkpoints::CheckSync(hash, pindexPrev))
+    {
+        if(!GetBoolArg("-nosynccheckpoints", false))
+        {
+            return error("AcceptBlock() : rejected by synchronized checkpoint");
+        }
+        else
+        {
+            strMiscWarning = _("WARNING: syncronized checkpoint violation detected, but skipped!");
+        }
+    }
+*/
+    // Enforce rule that the coinbase starts with serialized block height
+    CScript expect = CScript() << nHeight;
+//    if (!std::equal(expect.begin(), expect.end(), vtx[0].vin[0].scriptSig.begin()))
+//        return DoS(100, error("AcceptBlock() : block height mismatch in coinbase"));
 
     // Write block to history file
     if (!CheckDiskSpace(::GetSerializeSize(*this, SER_DISK, CLIENT_VERSION)))
@@ -4607,6 +4637,7 @@ void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& 
         hashPrevBlock = pblock->hashPrevBlock;
     }
     ++nExtraNonce;
+//    unsigned int nHeight = pindexPrev->nHeight+1; // Height first in coinbase required for block.version=2
     pblock->vtx[0].vin[0].scriptSig = (CScript() << pblock->nTime << CBigNum(nExtraNonce)) + COINBASE_FLAGS;
     assert(pblock->vtx[0].vin[0].scriptSig.size() <= 100);
 
