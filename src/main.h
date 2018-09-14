@@ -1073,7 +1073,9 @@ public:
 
         // Check the header
         if (!CheckProofOfWork(GetPoWHash(), nBits))
-            return error("CBlock::ReadFromDisk() : errors in block header");
+//        if (fReadTransactions && IsProofOfWork() && !CheckProofOfWork(GetHash(), nBits))
+printf("main.h::CBlock::ReadFromDisk() : errors in block header\n");
+//            return error("CBlock::ReadFromDisk() : errors in block header");
 
         return true;
     }
