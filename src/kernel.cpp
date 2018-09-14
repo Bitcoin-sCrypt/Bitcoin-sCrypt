@@ -21,7 +21,7 @@ unsigned int nModifierInterval = MODIFIER_INTERVAL;
 static std::map<int, unsigned int> mapStakeModifierCheckpoints =
     boost::assign::map_list_of
 //    (     0, 0xfd11f4e7u )
-    (     0, 0 )
+    (     0, 0x00000000 )
     ;
 
 // Get time weight
@@ -239,33 +239,19 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
     int64 nStakeModifierSelectionInterval = GetStakeModifierSelectionInterval();
     const CBlockIndex* pindex = pindexFrom;
 
-//printf("height %i\n",nStakeModifierHeight);
-//printf("stake modifier time %"PRI64d"\n",nStakeModifierTime);
-//printf("block time          %"PRI64d"\n",pindexFrom->GetBlockTime());
-//printf("interval %i\n",nStakeModifierSelectionInterval);
-
-
     // loop to find the stake modifier later by a selection interval
     while (nStakeModifierTime < pindexFrom->GetBlockTime() + nStakeModifierSelectionInterval)
     {
-//if(nStakeModifierTime != pindexFrom->GetBlockTime())
-//{
-//  printf("height %i\n",nStakeModifierHeight);
-//  printf("stake modifier time %"PRI64d"\n",nStakeModifierTime);
-//  printf("block time          %"PRI64d"\n",pindexFrom->GetBlockTime());
-//  printf("interval %i\n",nStakeModifierSelectionInterval);
-//}
         if (!pindex->pnext)
         {   // reached best block; may happen if node is behind on block chain
-//printf("!pindex->pnext = %i\n",pindex->pnext);
             if (fPrintProofOfStake || (pindex->GetBlockTime() + nStakeMinAge - 
                           nStakeModifierSelectionInterval > GetAdjustedTime()))
             {
 //              printf(">> nStakeModifierTime = %"PRI64d", pindexFrom->GetBlockTime() = %"PRI64d",\
                      nStakeModifierSelectionInterval = %"PRI64d"\n",nStakeModifierTime, \
                      pindexFrom->GetBlockTime(), nStakeModifierSelectionInterval);
-return false;
-//              return error("GetKernelStakeModifier() : reached best block %s at height %d \
+//return false;
+              return error("GetKernelStakeModifier() : reached best block %s at height %d \
                             from block %s\n",pindex->GetBlockHash().ToString().c_str(), \
                             pindex->nHeight, hashBlockFrom.ToString().c_str());
             }
@@ -446,7 +432,7 @@ unsigned int GetStakeModifierChecksum(const CBlockIndex* pindex)
 // Check stake modifier hard checkpoints
 bool CheckStakeModifierCheckpoints(int nHeight, unsigned int nStakeModifierChecksum)
 {
-    if (fTestNet) return true; // Testnet has no checkpoints
+    if (fTestNet|| nHeight==0) return true; // Testnet has no checkpoints
     if (mapStakeModifierCheckpoints.count(nHeight))
 	{
         return nStakeModifierChecksum == mapStakeModifierCheckpoints[nHeight];
