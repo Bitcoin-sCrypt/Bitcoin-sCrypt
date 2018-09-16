@@ -103,7 +103,6 @@ protected:
     std::string strFile;
     DbTxn *activeTxn;
     bool fReadOnly;
-	void *statData;
 
     explicit CDB(const char* pszFile, const char* pszMode="r+");
     ~CDB() { Close(); }
