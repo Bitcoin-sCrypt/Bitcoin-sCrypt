@@ -93,6 +93,7 @@ private:
     QAction *optionsAction;
     QAction *toggleHideAction;
     QAction *exportAction;
+    QAction *unlockWalletStakeAction;
     QAction *encryptWalletAction;
     QAction *checkWalletAction;
     QAction *repairWalletAction;
@@ -184,6 +185,8 @@ private slots:
     void incomingTransaction(const QModelIndex & parent, int start, int end);
     /** Encrypt the wallet */
     void encryptWallet(bool status);
+    /** Unlock wallet to stake*/
+    void unlockWalletStake();
 
     /** Check the wallet */
     void checkWallet();
