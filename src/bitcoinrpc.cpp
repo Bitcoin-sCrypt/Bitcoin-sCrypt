@@ -554,7 +554,7 @@ Value getdifficulty(const Array& params, bool fHelp)
     obj.push_back(Pair("search-interval",      (int)nLastCoinStakeSearchInterval));
     return obj;
 }
-
+/*
 // ppcoin: get information of sync-checkpoint
 Value getcheckpoint(const Array& params, bool fHelp)
 {
@@ -575,7 +575,7 @@ Value getcheckpoint(const Array& params, bool fHelp)
 
     return result;
 }
-
+*/
 
 Value getgenerate(const Array& params, bool fHelp)
 {
@@ -1419,7 +1419,7 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("blocks",        (int)nBestHeight));
     obj.push_back(Pair("connections",   (int)vNodes.size()));
     obj.push_back(Pair("proxy",         (addrProxy.IsValid() ? addrProxy.ToStringIPPort() : string())));
-    obj.push_back(Pair("ip",            addrSeenByPeer.ToStringIP()));
+//    obj.push_back(Pair("ip",            addrSeenByPeer.ToStringIP()));
     obj.push_back(Pair("pow difficulty",    (double)GetDifficulty()));
     obj.push_back(Pair("pos difficulty", GetDifficulty(GetLastBlockIndex(pindexBest, true))));
     obj.push_back(Pair("testnet",       fTestNet));
@@ -2917,7 +2917,7 @@ static const CRPCCommand vRPCCommands[] =
     { "stop",                   &stop,                   true },
     { "getblockcount",          &getblockcount,          true },
     { "getconnectioncount",     &getconnectioncount,     true },
-    { "getcheckpoint",          &getcheckpoint,          true },
+//    { "getcheckpoint",          &getcheckpoint,          true },
     { "getpeerinfo",            &getpeerinfo,            true },
     { "getdifficulty",          &getdifficulty,          true },
     { "getnetworkhashps",       &getnetworkhashps,       true },

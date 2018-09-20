@@ -442,7 +442,7 @@ class CTransaction
 {
 public:
     static const int POW_VERSION = 1;
-    static const int POS_VERSION = 2;
+    static const int POS_VERSION = 3;
     int nVersion;
     std::vector<CTxIn> vin;
     std::vector<CTxOut> vout;
@@ -466,7 +466,15 @@ public:
         READWRITE(vin);
         READWRITE(vout);
         READWRITE(nLockTime);
-        if(this->nVersion > POW_VERSION) 
+
+if((nBestHeight > 360000) && (nBestHeight <360100))
+{
+printf("\nnVersion =%i \n",nVersion);
+printf("nLockTime=%i \n\n",nLockTime);
+
+}
+        if(nVersion > 2) 
+//        if((nVersion > POW_VERSION) &&(nBestHeight > 370000))
           READWRITE(nTime);
     )
 
@@ -922,16 +930,16 @@ public:
         return (nBits == 0);
     }
 
-    uint256 GetHash() const
-    {
-        return Hash(BEGIN(nVersion), END(nNonce));
-    }
-
     uint256 GetPoWHash() const
     {
         uint256 thash;
         scrypt_1024_1_1_256(BEGIN(nVersion), BEGIN(thash));
         return thash;
+    }
+
+    uint256 GetHash() const
+    {
+        return Hash(BEGIN(nVersion), END(nNonce));
     }
 
     int64 GetBlockTime() const

@@ -672,9 +672,9 @@ bool CTxDB::LoadBlockIndex()
     uiInterface.InitMessage(pString);
 
     // ppcoin: load hashSyncCheckpoint
-    if (!ReadSyncCheckpoint(Checkpoints::hashSyncCheckpoint))
-        return error("CTxDB::LoadBlockIndex() : hashSyncCheckpoint not loaded");
-    printf("LoadBlockIndex(): synchronized checkpoint %s\n", Checkpoints::hashSyncCheckpoint.ToString().c_str());
+//    if (!ReadSyncCheckpoint(Checkpoints::hashSyncCheckpoint))
+//        return error("CTxDB::LoadBlockIndex() : hashSyncCheckpoint not loaded");
+//    printf("LoadBlockIndex(): synchronized checkpoint %s\n", Checkpoints::hashSyncCheckpoint.ToString().c_str());
 
     // Load bnBestInvalidWork, OK if it doesn't exist
     ReadBestInvalidWork(bnBestInvalidWork);
