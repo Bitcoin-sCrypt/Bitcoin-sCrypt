@@ -5049,12 +5049,6 @@ printf("CPUMiner : proof-of-%s block found %s\n", fProofOfStake? "stake" : "work
             // Update nTime every few seconds
             pblock->UpdateTime(pindexPrev);
             nBlockTime = ByteReverse(pblock->nTime);
-//            if (fTestNet)
-//            {
-//                // Changing pblock->nTime can change work required on testnet:
-//                nBlockBits = ByteReverse(pblock->nBits);
-//                hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
-//            }
         }
     }
 }
@@ -5109,30 +5103,6 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet)
     }
 }
 
-// miner's coin base reward based on nBits
-/*
-int64 GetProofOfWorkReward(int nHeight, int64 nFees, uint256 prevHash)
-{
-	int64 nSubsidy = 10 * COIN;
-
-	if (nHeight == 1)
-	{
-		nSubsidy = 1000000 * COIN;	// 1 Million coins
-		return nSubsidy + nFees;
-	}
-    if (nHeight < 2440)
-    {
-        nSubsidy = 100 * COIN;  // 1 Million coins
-        return nSubsidy + nFees;   
-    }
-
-    // Subsidy is cut in half every 1,576,800 blocks, which will occur approximately every 3 years
-    nSubsidy >>= (nHeight / 1576800);
-
-    return nSubsidy + nFees;
-}
-*/
-
 // miner's coin stake reward based on nBits and coin age spent (coin-days)
 // simple algorithm, not depend on the diff
 //const int YEARLY_BLOCKCOUNT = 0;	// 365 * 0
@@ -5144,7 +5114,7 @@ int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTi
     nRewardCoinYear = MAX_MINT_PROOF_OF_STAKE;
   }
   int64 nSubsidy = nCoinAge * nRewardCoinYear / 365;
-	if (fDebug && GetBoolArg("-printcreation"))
+	if (fDebug)
         printf("GetProofOfStakeReward(): create=%s nCoinAge=%"PRI64d" nBits=%d\n", FormatMoney(nSubsidy).c_str(), nCoinAge, nBits);
 
     return nSubsidy;
