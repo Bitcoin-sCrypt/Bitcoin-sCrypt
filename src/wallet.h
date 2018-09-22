@@ -23,7 +23,6 @@
 class CAccountingEntry;
 class CWalletTx;
 class CReserveKey;
-//class CWalletDB;
 class COutput;
 class CCoinControl;
 
@@ -131,7 +130,6 @@ public:
 
     void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true, const CCoinControl *coinControl=NULL) const;
     bool SelectCoinsMinConf(int64 nTargetValue, unsigned int nSpendTime, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet) const;
-
     // keystore implementation
     // Generate a new key
     CPubKey GenerateNewKey();
@@ -183,7 +181,6 @@ public:
     int64 GetNewMint() const;
     bool CreateTransaction(const std::vector<std::pair<CScript, int64> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, const CCoinControl *coinControl=NULL);
     bool CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, const CCoinControl *coinControl=NULL);
-
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
     bool GetStakeWeight(const CKeyStore& keystore, uint64& nMinWeight, uint64& nMaxWeight, uint64& nWeight);
     bool GetStakeWeightFromValue(const int64& nTime, const int64& nValue, uint64& nWeight);
@@ -228,7 +225,8 @@ public:
         BOOST_FOREACH(const CTxOut& txout, tx.vout)
             // If output is less than minimum value, then don't include transaction.
             // This is to help deal with dust spam bloating the wallet.
-            if (IsMine(txout) && txout.nValue >= nMinimumInputValue)
+//            if (IsMine(txout) && txout.nValue >= nMinimumInputValue)
+            if (IsMine(txout))
                 return true;
         return false;
     }
