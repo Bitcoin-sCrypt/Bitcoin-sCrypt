@@ -4,7 +4,6 @@
 #include <QObject>
 #include <vector>
 #include <map>
-
 #include "allocators.h" /* for SecureString */
 
 class OptionsModel;
@@ -30,10 +29,11 @@ public:
     qint64 amount;
 };
 
-/** Interface to Bitcoin-sCrypt wallet from Qt view code. */
+/** Interface to Bitcoin wallet from Qt view code. */
 class WalletModel : public QObject
 {
     Q_OBJECT
+
 public:
     explicit WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent = 0);
     ~WalletModel();
@@ -123,7 +123,7 @@ public:
     };
 
     UnlockContext requestUnlock();
-    bool getPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
+   bool getPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
     void getOutputs(const std::vector<COutPoint>& vOutpoints, std::vector<COutput>& vOutputs);
     void listCoins(std::map<QString, std::vector<COutput> >& mapCoins) const;
     bool isLockedCoin(uint256 hash, unsigned int n) const;
@@ -156,6 +156,16 @@ private:
     void checkBalanceChanged();
 
 
+public slots:
+    /* Wallet status might have changed */
+    void updateStatus();
+    /* New transaction, or transaction changed status */
+    void updateTransaction(const QString &hash, int status);
+    /* New, updated or removed address book entry */
+    void updateAddressBook(const QString &address, const QString &label, bool isMine, int status);
+    /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
+    void pollBalanceChanged();
+
 signals:
     // Signal that balance in wallet changed
     void balanceChanged(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 immatureBalance);
@@ -173,16 +183,6 @@ signals:
 
     // Asynchronous error notification
     void error(const QString &title, const QString &message, bool modal);
-
-public slots:
-    /* Wallet status might have changed */
-    void updateStatus();
-    /* New transaction, or transaction changed status */
-    void updateTransaction(const QString &hash, int status);
-    /* New, updated or removed address book entry */
-    void updateAddressBook(const QString &address, const QString &label, bool isMine, int status);
-    /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
-    void pollBalanceChanged();
 };
 
 

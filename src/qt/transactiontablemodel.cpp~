@@ -295,7 +295,7 @@ QString TransactionTableModel::formatTxStatus(const TransactionRecord *wtx) cons
         status = tr("Confirmed (%1 confirmations)").arg(wtx->status.depth);
         break;
     }
-    if(wtx->type == TransactionRecord::Generated  || wtx->type == TransactionRecord::StakeMint)
+    if(wtx->type == TransactionRecord::Generated)
     {
         switch(wtx->status.maturity)
         {
@@ -360,6 +360,7 @@ QString TransactionTableModel::formatTxType(const TransactionRecord *wtx) const
     case TransactionRecord::SendToSelf:
         return tr("Payment to yourself");
     case TransactionRecord::StakeMint:
+        return tr("StakeMint");
     case TransactionRecord::Generated:
         return tr("Mined");
     default:
@@ -372,10 +373,11 @@ QVariant TransactionTableModel::txAddressDecoration(const TransactionRecord *wtx
     switch(wtx->type)
     {
     case TransactionRecord::Generated:
+        return QIcon(":/icons/tx_mined");
     case TransactionRecord::StakeMint:
 		{
 			QString str = BitcoinUnits::format(walletModel->getOptionsModel()->getDisplayUnit(), wtx->credit + wtx->debit);
-			return QIcon(":/icons/tx_mined");
+			return QIcon(":/icons/tx_possed");
 		}
     case TransactionRecord::RecvWithAddress:
     case TransactionRecord::RecvFromOther:
@@ -397,11 +399,11 @@ QString TransactionTableModel::formatTxToAddress(const TransactionRecord *wtx, b
         return QString::fromStdString(wtx->address);
     case TransactionRecord::RecvWithAddress:
     case TransactionRecord::SendToAddress:
-    case TransactionRecord::Generated:
         return lookupAddress(wtx->address, tooltip);
     case TransactionRecord::SendToOther:
         return QString::fromStdString(wtx->address);
     case TransactionRecord::SendToSelf:
+    case TransactionRecord::Generated:
     default:
         return tr("(n/a)");
     }
@@ -414,13 +416,13 @@ QVariant TransactionTableModel::addressColor(const TransactionRecord *wtx) const
     {
     case TransactionRecord::RecvWithAddress:
     case TransactionRecord::SendToAddress:
-    case TransactionRecord::Generated:
         {
         QString label = walletModel->getAddressTableModel()->labelForAddress(QString::fromStdString(wtx->address));
         if(label.isEmpty())
             return COLOR_BAREADDRESS;
         } break;
     case TransactionRecord::SendToSelf:
+    case TransactionRecord::Generated:
         return COLOR_BAREADDRESS;
     default:
         break;
@@ -443,7 +445,7 @@ QString TransactionTableModel::formatTxAmount(const TransactionRecord *wtx, bool
 
 QVariant TransactionTableModel::txStatusDecoration(const TransactionRecord *wtx) const
 {
-    if(wtx->type == TransactionRecord::Generated || wtx->type == TransactionRecord::StakeMint)
+    if(wtx->type == TransactionRecord::Generated)
     {
         switch(wtx->status.maturity)
         {
@@ -578,8 +580,7 @@ QVariant TransactionTableModel::data(const QModelIndex &index, int role) const
         return QString::fromStdString(rec->getTxID());
     case ConfirmedRole:
         // Return True if transaction counts for balance
-        return rec->status.confirmed && !((rec->type == TransactionRecord::Generated || rec->type == TransactionRecord::StakeMint) &&
-                                          rec->status.maturity != TransactionStatus::Mature);
+        return rec->status.confirmed && !((rec->type == TransactionRecord::Generated || rec->type == TransactionRecord::StakeMint) && rec->status.maturity != TransactionStatus::Mature);
     case FormattedAmountRole:
         return formatTxAmount(rec, false);
     }
