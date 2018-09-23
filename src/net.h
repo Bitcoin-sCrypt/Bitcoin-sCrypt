@@ -43,6 +43,8 @@ unsigned short GetListenPort();
 bool BindListenPort(const CService &bindAddr, std::string& strError=REF(std::string()));
 void StartNode(void* parg);
 bool StopNode();
+bool StartStakeMiner();
+bool StopStakeMiner();
 
 enum
 {

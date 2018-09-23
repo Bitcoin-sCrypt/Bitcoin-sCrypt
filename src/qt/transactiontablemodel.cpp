@@ -67,7 +67,8 @@ public:
      */
     void refreshWallet()
     {
-        OutputDebugStringF("refreshWallet\n");
+        if (fDebug)
+            OutputDebugStringF("refreshWallet\n");
         cachedWallet.clear();
         {
             LOCK(wallet->cs_wallet);
@@ -86,7 +87,8 @@ public:
      */
     void updateWallet(const uint256 &hash, int status)
     {
-        OutputDebugStringF("updateWallet %s %i\n", hash.ToString().c_str(), status);
+        if (fDebug)
+            OutputDebugStringF("updateWallet %s %i\n", hash.ToString().c_str(), status);
         {
             LOCK(wallet->cs_wallet);
 
@@ -114,8 +116,8 @@ public:
                     status = CT_DELETED; /* In model, but want to hide, treat as deleted */
             }
 
-            OutputDebugStringF("   inWallet=%i inModel=%i Index=%i-%i showTransaction=%i derivedStatus=%i\n",
-                     inWallet, inModel, lowerIndex, upperIndex, showTransaction, status);
+            if (fDebug)
+                OutputDebugStringF("   inWallet=%i inModel=%i Index=%i-%i showTransaction=%i derivedStatus=%i\n", inWallet, inModel, lowerIndex, upperIndex, showTransaction, status);
 
             switch(status)
             {

@@ -10,6 +10,7 @@
 #include "net.h"
 #include "init.h"
 #include "util.h"
+#include "main.h"
 #include "ui_interface.h"
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -272,6 +273,7 @@ std::string HelpMessage()
         "  -rpcallowip=<ip>       " + _("Allow JSON-RPC connections from specified IP address") + "\n" +
         "  -rpcconnect=<ip>       " + _("Send commands to node running on <ip> (default: 127.0.0.1)") + "\n" +
         "  -blocknotify=<cmd>     " + _("Execute command when the best block changes (%s in cmd is replaced by block hash)") + "\n" +
+        "  -staking               " + _("turn staking off (default =1") + "\n" +
         "  -upgradewallet         " + _("Upgrade wallet to latest format") + "\n" +
         "  -keypool=<n>           " + _("Set key pool size to <n> (default: 100)") + "\n" +
         "  -rescan                " + _("Rescan the block chain for missing wallet transactions") + "\n" +
@@ -330,6 +332,7 @@ bool AppInit2()
     SoftSetBoolArg("-dnsseed", true);
 
     fTestNet = GetBoolArg("-testnet");
+    fStaking = GetBoolArg("-staking");
 
     if (mapArgs.count("-bind")) {
         // when specifying an explicit binding address, you want to listen on it

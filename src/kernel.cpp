@@ -378,7 +378,9 @@ bool CheckStakeKernelHash(unsigned int nBits, const CBlock& blockFrom, unsigned 
 // Check kernel hash target and coinstake signature
 bool CheckProofOfStake(const CTransaction& tx, unsigned int nBits, uint256& hashProofOfStake)
 {
-printf("Kernel::CheckProofOfStake called\n");
+    if (fDebug)
+      printf("Kernel::CheckProofOfStake called\n");
+
     if (!tx.IsCoinStake())
         return error("CheckProofOfStake() : called on non-coinstake %s", tx.GetHash().ToString().c_str());
 

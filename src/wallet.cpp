@@ -796,9 +796,11 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate, i
     {
         LOCK(cs_wallet);
 		int ccc = 0;
+#ifdef QT_GUI
 		int progress;
 		int oldProgress = -1;
 		char message[256];
+#endif
         while (pindex)
         {
 #ifdef QT_GUI

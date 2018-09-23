@@ -1082,7 +1082,8 @@ void DumpAddresses()
     CAddrDB adb;
     adb.Write(addrman);
 
-    printf("Flushed %d addresses to peers.dat  %"PRI64d"ms\n",
+    if (fDebugNet)
+      printf("Flushed %d addresses to peers.dat  %"PRI64d"ms\n",
            addrman.size(), GetTimeMillis() - nStart);
 }
 
@@ -1160,22 +1161,31 @@ void static ProcessOneShot()
 // ppcoin: stake minter thread
 void static ThreadStakeMinter(void* parg)
 {
-    printf("ThreadStakeMinter started\n");
-    CWallet* pwallet = (CWallet*)parg;
-    try
+    // Mine proof-of-stake blocks in the background
+    if (!fStaking)
+        printf("Staking disabled\n");
+    else
     {
+      printf("ThreadStakeMinter started\n");
+      CWallet* pwallet = (CWallet*)parg;
+      try
+      {
         vnThreadsRunning[THREAD_MINTER]++;
         BitcoinMiner(pwallet, true);
         vnThreadsRunning[THREAD_MINTER]--;
-    }
-    catch (std::exception& e) {
+      }
+      catch (std::exception& e)
+      {
         vnThreadsRunning[THREAD_MINTER]--;
         PrintException(&e, "ThreadStakeMinter()");
-    } catch (...) {
+      }
+      catch (...)
+      {
         vnThreadsRunning[THREAD_MINTER]--;
         PrintException(NULL, "ThreadStakeMinter()");
+      }
+      printf("ThreadStakeMinter exiting, %d threads remaining\n", vnThreadsRunning[THREAD_MINTER]);
     }
-    printf("ThreadStakeMinter exiting, %d threads remaining\n", vnThreadsRunning[THREAD_MINTER]);
 }
 
 void ThreadOpenConnections2(void* parg)
@@ -1727,6 +1737,29 @@ void StartNode(void* parg)
 
     // Generate coins in the background
     GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain);
+}
+
+bool StartStakeMiner()
+{
+  if (!CreateThread(ThreadStakeMinter, pwalletMain))
+  {
+    printf("Error: CreateThread(ThreadStakeMinter) failed\n");
+    return false;
+  }
+  return true;
+}
+
+bool StopStakeMiner()
+{
+  do
+  {
+    vnThreadsRunning[THREAD_MINTER]--;
+    if (vnThreadsRunning[THREAD_MINTER] <= 0)
+      break;
+    Sleep(20);
+  }while(true);
+
+  printf("ThreadBitcoinMinter exiting, %d threads remaining\n", vnThreadsRunning[THREAD_MINTER]);
 }
 
 bool StopNode()

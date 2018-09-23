@@ -2138,12 +2138,14 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
     bnBestChainWork = pindexNew->bnChainWork;
     nTimeBestReceived = GetTime();
     nTransactionsUpdated++;
-    printf("SetBestChain: new best=%s  height=%d  work=%s  date=%s\n",
-      hashBestChain.ToString().substr(0,20).c_str(), nBestHeight, bnBestChainWork.ToString().c_str(),
-      DateTimeStrFormat("%x %H:%M:%S", pindexBest->GetBlockTime()).c_str());
+
+    if (fDebug)
+    {
+        printf("SetBestChain: new best=%s  height=%d  work=%s  date=%s\n",
+        hashBestChain.ToString().substr(0,20).c_str(), nBestHeight, bnBestChainWork.ToString().c_str(), DateTimeStrFormat("%x %H:%M:%S", pindexBest->GetBlockTime()).c_str());
 
 	printf("Stake checkpoint: %x\n", pindexBest->nStakeModifierChecksum);
-
+    }
     // Check the version of the last 100 blocks to see if we need to upgrade:
     if (!fIsInitialDownload)
     {
@@ -2543,32 +2545,6 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
         if (!mapProofOfStake.count(hash)) // add to mapProofOfStake
             mapProofOfStake.insert(make_pair(hash, hashProofOfStake));
     }
-/*
-    CBlockIndex* pcheckpoint = Checkpoints::GetLastSyncCheckpoint();
-    if (pcheckpoint && pblock->hashPrevBlock != hashBestChain && !Checkpoints::WantedByPendingSyncCheckpoint(hash))
-    {
-        // Extra checks to prevent "fill up memory by spamming with bogus blocks"
-        int64 deltaTime = pblock->GetBlockTime() - pcheckpoint->nTime;
-        CBigNum bnNewBlock;
-        bnNewBlock.SetCompact(pblock->nBits);
-        CBigNum bnRequired;
-
-		if (pblock->IsProofOfStake())
-            bnRequired.SetCompact(ComputeMinStake(GetLastBlockIndex(pcheckpoint, true)->nBits, deltaTime, pblock->nTime));
-        else
-            bnRequired.SetCompact(ComputeMinWork(GetLastBlockIndex(pcheckpoint, false)->nBits, deltaTime));
-
-        if (bnNewBlock > bnRequired)
-        {
-            if (pfrom)
-                pfrom->Misbehaving(100);
-            return error("ProcessBlock() : block with too little %s", pblock->IsProofOfStake()? "proof-of-stake" : "proof-of-work");
-        }
-    }
-*/
-    // ppcoin: ask for pending sync-checkpoint if any
-//    if (!IsInitialBlockDownload())
-//        Checkpoints::AskForPendingSyncCheckpoint(pfrom);
 
     // If don't already have its previous block, shunt it off to holding area until we get it
     if (!mapBlockIndex.count(pblock->hashPrevBlock))
@@ -2624,11 +2600,8 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
         mapOrphanBlocksByPrev.erase(hashPrev);
     }
 
-    printf("ProcessBlock: ACCEPTED\n");
-
-    // ppcoin: if responsible for sync-checkpoint send it
-//    if (pfrom && !CSyncCheckpoint::strMasterPrivKey.empty())
-//        Checkpoints::SendSyncCheckpoint(Checkpoints::AutoSelectSyncCheckpoint());
+    if (fDebug)
+      printf("ProcessBlock: ACCEPTED\n");
 
     return true;
 }
@@ -3092,7 +3065,7 @@ bool LoadExternalBlockFile(FILE* fileIn)
 map<uint256, CAlert> mapAlerts;
 CCriticalSection cs_mapAlerts;
 
-static string strMintMessage = "Info: Minting suspended due to locked wallet.";
+static string strMintMessage;// = "Info: Minting suspended due to locked wallet.";
 static string strMintWarning;
 
 string GetWarnings(string strFor)
@@ -3378,23 +3351,11 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             BOOST_FOREACH(PAIRTYPE(const uint256, CAlert)& item, mapAlerts)
                 item.second.RelayTo(pfrom);
         }
-/*
-        // ppcoin: relay sync-checkpoint
-        {
-            LOCK(Checkpoints::cs_hashSyncCheckpoint);
-            if (!Checkpoints::checkpointMessage.IsNull())
-                Checkpoints::checkpointMessage.RelayTo(pfrom);
-        }
-*/
         pfrom->fSuccessfullyConnected = true;
 
         printf("receive version message: version %d, blocks=%d, us=%s, them=%s, peer=%s\n", pfrom->nVersion, pfrom->nStartingHeight, addrMe.ToString().c_str(), addrFrom.ToString().c_str(), pfrom->addr.ToString().c_str());
 
         cPeerBlockCounts.input(pfrom->nStartingHeight);
-
-        // ppcoin: ask for pending sync-checkpoint if any
-//        if (!IsInitialBlockDownload())
-//            Checkpoints::AskForPendingSyncCheckpoint(pfrom);
     }
 
 
@@ -3507,8 +3468,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             pfrom->AddInventoryKnown(inv);
 
             bool fAlreadyHave = AlreadyHave(txdb, inv);
-//            if (fDebugNet)
-//                printf("  got inventory: %s  %s\n", inv.ToString().c_str(), fAlreadyHave ? "have" : "new");
+            if (fDebugNet)
+                printf("  got inventory: %s  %s\n", inv.ToString().c_str(), fAlreadyHave ? "have" : "new");
 
             if (!fAlreadyHave)
                 pfrom->AskFor(inv);
@@ -3638,22 +3599,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             }
         }
     }
-/*
-    else if (strCommand == "checkpoint")
-    {
-        CSyncCheckpoint checkpoint;
-        vRecv >> checkpoint;
-
-        if (checkpoint.ProcessSyncCheckpoint(pfrom))
-        {
-            // Relay
-            pfrom->hashCheckpointKnown = checkpoint.hashCheckpoint;
-            LOCK(cs_vNodes);
-            BOOST_FOREACH(CNode* pnode, vNodes)
-                checkpoint.RelayTo(pnode);
-        }
-    }
-*/
 
     else if (strCommand == "getheaders")
     {
@@ -3762,11 +3707,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
 
     else if (strCommand == "block")
     {
-printf("1) strCommand = block  ----\n");
         CBlock block;
-printf("2) strCommand = block  ----\n");
         vRecv >> block;
-printf("3) strCommand = block  ----\n");
 
         if (fDebug)
         {
@@ -4186,8 +4128,8 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             const CInv& inv = (*pto->mapAskFor.begin()).second;
             if (!AlreadyHave(txdb, inv))
             {
-//                if (fDebugNet)
-//                    printf("sending getdata: %s\n", inv.ToString().c_str());
+                if (fDebugNet)
+                    printf("sending getdata: %s\n", inv.ToString().c_str());
                 vGetData.push_back(inv);
                 if (vGetData.size() >= 1000)
                 {
@@ -4840,20 +4782,25 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     uint256 hash = pblock->GetPoWHash();
     uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
 
-printf("hashtarget %s \n",hashTarget.GetHex().c_str());
-printf("hash       %s \n",hash.GetHex().c_str());
+    if (fDebug)
+    {
+      printf("hashtarget %s \n",hashTarget.GetHex().c_str());
+      printf("hash       %s \n",hash.GetHex().c_str());
+    }
 
-//    if (hash > hashTarget)
     if (hash > hashTarget && pblock->IsProofOfWork())
     {
 printf ("CheckWork: hash too large.\n");
       return false;
     }
     //// debug print
-    printf("BitcoinMiner:\n");
-    printf("new block found  \n  hash: %s  \ntarget: %s\n", hash.GetHex().c_str(), hashTarget.GetHex().c_str());
-    pblock->print();
-    printf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue).c_str());
+    if (fDebug)
+    {
+      printf("BitcoinMiner:\n");
+      printf("new block found  \n  hash: %s  \ntarget: %s\n", hash.GetHex().c_str(), hashTarget.GetHex().c_str());
+      pblock->print();
+      printf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue).c_str());
+    }
 
     // Found a solution
     {
@@ -4940,7 +4887,8 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                     continue;
                 }
                 strMintWarning = "";
-                printf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
+                if (fDebug)
+                  printf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
                 SetThreadPriority(THREAD_PRIORITY_NORMAL);
                 CheckWork(pblock.get(), *pwalletMain, reservekey);
                 SetThreadPriority(THREAD_PRIORITY_LOWEST);
@@ -5084,7 +5032,7 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet)
         fGenerateBitcoins = false;
     fLimitProcessors = (nLimitProcessors != -1);
 
-    if (fGenerate)
+    if (fGenerate || fStaking)
     {
         int nProcessors = boost::thread::hardware_concurrency();
         printf("%d processors\n", nProcessors);

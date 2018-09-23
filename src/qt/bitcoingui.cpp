@@ -985,6 +985,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         encryptWalletAction->setChecked(false);
         changePassphraseAction->setEnabled(false);
         encryptWalletAction->setEnabled(true);
+        unlockWalletStakeAction->setEnabled(false);
         break;
     case WalletModel::Unlocked:
         labelEncryptionIcon->show();
@@ -1044,8 +1045,7 @@ void BitcoinGUI::unlockWalletStake()
     {
       pwalletMain->fWalletUnlockMintOnly=true;      
       error(tr("Unlock Wallet Information"),
-        tr("Wallet has been unlocked. \n"
-          "Proof of Stake has started.\n"),true);
+        tr("Wallet has been unlocked. \n"),true);
     }
   }
 }
@@ -1327,6 +1327,8 @@ void BitcoinGUI::updateMintingIcon()
          labelMintingIcon->setToolTip(tr("Not staking because wallet is syncing"));
       else if(walletModel->getEncryptionStatus() == WalletModel::Locked)
          labelMintingIcon->setToolTip(tr("Not staking because wallet is locked"));
+      else if(!fStaking)
+         labelMintingIcon->setToolTip(tr("Staking is disabled"));
       else if(nBestHeight < POS_START_BLOCK)
          labelMintingIcon->setToolTip(tr("No PoS rewards yet"));
       else
@@ -1353,10 +1355,7 @@ void BitcoinGUI::updateMintingIcon()
         labelMintingIcon->setEnabled(true);
             labelMintingIcon->setToolTip(tr("Staking.\n Your weight is %1\n Network weight is %2\n You have 50\% chance of producing a stake within %3").arg(nWeight).arg(nNetworkWeight).arg(text));
           }
-       }
-
-
-
+     }
 }
 
 void BitcoinGUI::updateMintingWeights()

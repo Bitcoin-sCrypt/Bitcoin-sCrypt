@@ -336,13 +336,15 @@ void WalletModel::getStakeWeight(uint64& nMinWeight, uint64& nMaxWeight, uint64&
 // Handlers for core signals
 static void NotifyKeyStoreStatusChanged(WalletModel *walletmodel, CCryptoKeyStore *wallet)
 {
-    OutputDebugStringF("NotifyKeyStoreStatusChanged\n");
+    if (fDebug)
+      OutputDebugStringF("NotifyKeyStoreStatusChanged\n");
     QMetaObject::invokeMethod(walletmodel, "updateStatus", Qt::QueuedConnection);
 }
 
 static void NotifyAddressBookChanged(WalletModel *walletmodel, CWallet *wallet, const CTxDestination &address, const std::string &label, bool isMine, ChangeType status)
 {
-    OutputDebugStringF("NotifyAddressBookChanged %s %s isMine=%i status=%i\n", CBitcoinAddress(address).ToString().c_str(), label.c_str(), isMine, status);
+    if (fDebug)
+      OutputDebugStringF("NotifyAddressBookChanged %s %s isMine=%i status=%i\n", CBitcoinAddress(address).ToString().c_str(), label.c_str(), isMine, status);
     QMetaObject::invokeMethod(walletmodel, "updateAddressBook", Qt::QueuedConnection,
                               Q_ARG(QString, QString::fromStdString(CBitcoinAddress(address).ToString())),
                               Q_ARG(QString, QString::fromStdString(label)),
@@ -352,7 +354,8 @@ static void NotifyAddressBookChanged(WalletModel *walletmodel, CWallet *wallet, 
 
 static void NotifyTransactionChanged(WalletModel *walletmodel, CWallet *wallet, const uint256 &hash, ChangeType status)
 {
-    OutputDebugStringF("NotifyTransactionChanged %s status=%i\n", hash.GetHex().c_str(), status);
+    if (fDebug)
+      OutputDebugStringF("NotifyTransactionChanged %s status=%i\n", hash.GetHex().c_str(), status);
     QMetaObject::invokeMethod(walletmodel, "updateTransaction", Qt::QueuedConnection,
                               Q_ARG(QString, QString::fromStdString(hash.GetHex())),
                               Q_ARG(int, status));

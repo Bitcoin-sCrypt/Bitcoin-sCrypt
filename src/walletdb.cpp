@@ -238,7 +238,7 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
                 fAnyUnordered = true;
 
             // debug print
-            printf("LoadWallet  %s\n", wtx.GetHash().ToString().c_str());
+//            printf("LoadWallet  %s\n", wtx.GetHash().ToString().c_str());
 //            printf(" %12"PRI64d"  /*%s*/  %s  %s\n",
 //                wtx.vout[0].nValue,
 //                //DateTimeStrFormat("%x %H:%M:%S", wtx.GetBlockTime()).c_str(),
