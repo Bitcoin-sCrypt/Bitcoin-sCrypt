@@ -1,4 +1,4 @@
-Bitcoin - sCrypt v1.6.0-beta
+Bitcoin - sCrypt v2.0-release
 
 Official website:  https://bitcoinscrypt.io
 
