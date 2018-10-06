@@ -331,8 +331,8 @@ bool AppInit2()
     SoftSetBoolArg("-listen", true); // just making sure
     SoftSetBoolArg("-dnsseed", true);
 
-    fTestNet = GetBoolArg("-testnet");
-    fStaking = GetBoolArg("-staking");
+    fTestNet = GetBoolArg("-testnet",false);
+    fStaking = GetBoolArg("-staking",true);
 
     if (mapArgs.count("-bind")) {
         // when specifying an explicit binding address, you want to listen on it

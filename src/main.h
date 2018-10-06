@@ -50,8 +50,7 @@ static const int COINBASE_MATURITY = 100;
 extern int nCoinbaseMaturity;
 
 static const int64 MAX_MINT_PROOF_OF_STAKE = 0.15 * COIN;	// 15% annual interest
-//static const int POS_START_BLOCK = 600000;
-static const int POS_START_BLOCK = 500;
+static const int POS_START_BLOCK = 637000;
 static const int64 nMaxClockDrift = 2 * 60 * 60;        // two hours
 
 // time to switch to KimotoGravityWell
@@ -134,7 +133,6 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey);
 bool CheckProofOfWork(uint256 hash, unsigned int nBits);
 
 int64 GetBlockValue(int nHeight, int64 nFees);
-//int64 GetProofOfWorkReward(int nHeight, int64 nFees, uint256 prevHash);
 int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTime, int nHeight);
 unsigned int GetStakeMinAge(unsigned int nTime);
 unsigned int GetStakeMaxAge(unsigned int nTime);
@@ -149,9 +147,7 @@ bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfStake);
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
 
-//unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, const CBlock *pblock);
 unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, bool fProofOfStake);
-//unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, const CBlock *pblock);
 unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, bool fProofOfStake);
 
 
@@ -467,12 +463,6 @@ public:
         READWRITE(vout);
         READWRITE(nLockTime);
 
-if((nBestHeight > 360000) && (nBestHeight <360100))
-{
-printf("\nnVersion =%i \n",nVersion);
-printf("nLockTime=%i \n\n",nLockTime);
-
-}
         if(nVersion > 2) 
 //        if((nVersion > POW_VERSION) &&(nBestHeight > 370000))
           READWRITE(nTime);
@@ -1080,15 +1070,15 @@ public:
             return error("%s() : deserialize or I/O error", __PRETTY_FUNCTION__);
         }
 
-        // Check the header
-        if (fReadTransactions && IsProofOfWork() && !CheckProofOfWork(GetPoWHash(), nBits))
-        {
+        // Check the header - why? it had to be checked before going to disk
+//        if (fReadTransactions && IsProofOfWork() && !CheckProofOfWork(GetPoWHash(), nBits))
+//        {
 //        if (fReadTransactions && IsProofOfWork() && !CheckProofOfWork(GetHash(), nBits))
-printf("main.h::CBlock::ReadFromDisk() : errors in block header\n");
-printf("IsProofOfWork = %i\n",IsProofOfWork());
-printf("fReadTransactions = %i\n",fReadTransactions);
+//printf("main.h::CBlock::ReadFromDisk() : errors in block header\n");
+//printf("IsProofOfWork = %i\n",IsProofOfWork());
+//printf("fReadTransactions = %i\n",fReadTransactions);
 //            return error("CBlock::ReadFromDisk() : errors in block header");
-        }
+//        }
         return true;
     }
 
