@@ -43,6 +43,8 @@ unsigned short GetListenPort();
 bool BindListenPort(const CService &bindAddr, std::string& strError=REF(std::string()));
 void StartNode(void* parg);
 bool StopNode();
+bool StartStakeMiner();
+bool StopStakeMiner();
 
 enum
 {
@@ -107,6 +109,7 @@ enum threadId
     THREAD_ADDEDCONNECTIONS,
     THREAD_DUMPADDRESS,
     THREAD_RPCHANDLER,
+    THREAD_MINTER,
 
     THREAD_MAX
 };
@@ -316,8 +319,8 @@ public:
         // We're using mapAskFor as a priority queue,
         // the key is the earliest time the request can be sent
         int64& nRequestTime = mapAlreadyAskedFor[inv];
-        if (fDebugNet)
-            printf("askfor %s   %"PRI64d"\n", inv.ToString().c_str(), nRequestTime);
+//        if (fDebugNet)
+//            printf("askfor %s   %"PRI64d"\n", inv.ToString().c_str(), nRequestTime);
 
         // Make sure not to reuse time indexes to keep things in the same order
         int64 nNow = (GetTime() - 1) * 1000000;

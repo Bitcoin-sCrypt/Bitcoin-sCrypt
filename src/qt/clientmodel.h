@@ -32,6 +32,9 @@ public:
     int getNumConnections() const;
     int getNumBlocks() const;
     int getNumBlocksAtStartup();
+    double getPosKernalPS();
+    int getStakeTargetSpacing();
+
     MiningType getMiningType() const;
     int getMiningThreads() const;
     bool getMiningStarted() const;

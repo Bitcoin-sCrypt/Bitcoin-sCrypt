@@ -4,6 +4,7 @@ VERSION = 1.4.0
 INCLUDEPATH += src src/json src/qt
 DEFINES += QT_GUI BOOST_THREAD_USE_LIB BOOST_SPIRIT_THREADSAFE BOOST_THREAD_PROVIDES_GENERIC_SHARED_MUTEX_ON_WIN __NO_SYSTEM_INCLUDES
 CONFIG += no_include_pwd
+QT += network
 
 # UNCOMMENT THIS SECTION TO BUILD ON WINDOWS
 # Change paths if needed, these use the Bitcoin-sCrypt/deps.git repository locations
@@ -85,6 +86,8 @@ contains(BITCOIN_NEED_QT_PLUGINS, 1) {
     DEFINES += HAVE_BUILD_INFO
 }
 
+QMAKE_CXXFLAGS += -msse2 -w
+QMAKE_CFLAGS += -msse2
 QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter
 
 # Input
@@ -109,6 +112,9 @@ HEADERS += src/qt/bitcoingui.h \
     src/sync.h \
     src/util.h \
     src/uint256.h \
+    src/kernel.h \
+    src/scrypt_mine.h \
+    src/pbkdf2.h \
     src/serialize.h \
     src/strlcpy.h \
     src/main.h \
@@ -118,6 +124,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/walletdb.h \
     src/script.h \
     src/init.h \
+	src/qt/skinspage.h \
     src/mruset.h \
     src/json/json_spirit_writer_template.h \
     src/json/json_spirit_writer.h \
@@ -181,6 +188,7 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/script.cpp \
     src/main.cpp \
     src/init.cpp \
+	src/qt/skinspage.cpp \
     src/net.cpp \
     src/checkpoints.cpp \
     src/addrman.cpp \
@@ -221,7 +229,12 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/rpcconsole.cpp \
     src/scrypt.c \
     src/qt/miningpage.cpp \
-    src/noui.cpp
+    src/noui.cpp \
+    src/kernel.cpp \
+    src/scrypt-x86.S \
+    src/scrypt-x86_64.S \
+    src/scrypt_mine.cpp \
+    src/pbkdf2.cpp
 
 RESOURCES += \
     src/qt/bitcoin.qrc
@@ -230,6 +243,7 @@ FORMS += \
     src/qt/forms/sendcoinsdialog.ui \
     src/qt/forms/coincontroldialog.ui \
     src/qt/forms/addressbookpage.ui \
+    src/qt/forms/skinspage.ui \
     src/qt/forms/signverifymessagedialog.ui \
     src/qt/forms/aboutdialog.ui \
     src/qt/forms/editaddressdialog.ui \

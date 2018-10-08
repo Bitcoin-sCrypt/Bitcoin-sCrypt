@@ -10,6 +10,7 @@
 #include "net.h"
 #include "init.h"
 #include "util.h"
+#include "main.h"
 #include "ui_interface.h"
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -272,6 +273,7 @@ std::string HelpMessage()
         "  -rpcallowip=<ip>       " + _("Allow JSON-RPC connections from specified IP address") + "\n" +
         "  -rpcconnect=<ip>       " + _("Send commands to node running on <ip> (default: 127.0.0.1)") + "\n" +
         "  -blocknotify=<cmd>     " + _("Execute command when the best block changes (%s in cmd is replaced by block hash)") + "\n" +
+        "  -staking               " + _("turn staking off (default =1") + "\n" +
         "  -upgradewallet         " + _("Upgrade wallet to latest format") + "\n" +
         "  -keypool=<n>           " + _("Set key pool size to <n> (default: 100)") + "\n" +
         "  -rescan                " + _("Rescan the block chain for missing wallet transactions") + "\n" +
@@ -329,6 +331,8 @@ bool AppInit2()
     SoftSetBoolArg("-listen", true); // just making sure
     SoftSetBoolArg("-dnsseed", true);
 
+    fTestNet = GetBoolArg("-testnet",false);
+    fStaking = GetBoolArg("-staking",true);
 
     if (mapArgs.count("-bind")) {
         // when specifying an explicit binding address, you want to listen on it
@@ -456,6 +460,18 @@ bool AppInit2()
     printf("Startup time: %s\n", DateTimeStrFormat("%x %H:%M:%S", GetTime()).c_str());
     printf("Default data directory %s\n", GetDefaultDataDir().string().c_str());
     printf("Used data directory %s\n", GetDataDir().string().c_str());
+    //check for themes directory, and create if missing
+    if (!filesystem::exists(GetDataDir() / "themes"))
+    {
+      boost::filesystem::path temppath;
+      temppath = GetDataDir() / "themes";
+      filesystem::create_directory(temppath);
+      printf("created themes directory %s\n", temppath.string().c_str());
+      temppath = GetDataDir() / "themes/images";
+      filesystem::create_directory(temppath);
+      printf("created themes directory %s\n", temppath.string().c_str());
+    }
+
     std::ostringstream strErrors;
 
     if (fDaemon)
@@ -672,8 +688,16 @@ bool AppInit2()
             printf("%s", strErrors.str().c_str());
             return InitError(strErrors.str());
         }
+        else if (nLoadWalletRet == DB_NONCRITICAL_ERROR)
+        {
+          strErrors << _("Error non critacal: errror loading wallet.dat ") << "\n";
+        }
+        else if (nLoadWalletRet == DB_LOAD_FAIL)
+        {
+          strErrors << _("Error db load fail: loading wallet.dat ") << "\n";
+        }
         else
-            strErrors << _("Error loading wallet.dat") << "\n";
+            strErrors << _("Error loading wallet.dat ") << nLoadWalletRet << "\n";
     }
 
     if (GetBoolArg("-upgradewallet", fFirstRun))

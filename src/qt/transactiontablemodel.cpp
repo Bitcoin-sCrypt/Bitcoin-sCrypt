@@ -67,7 +67,8 @@ public:
      */
     void refreshWallet()
     {
-        OutputDebugStringF("refreshWallet\n");
+        if (fDebug)
+            OutputDebugStringF("refreshWallet\n");
         cachedWallet.clear();
         {
             LOCK(wallet->cs_wallet);
@@ -86,7 +87,8 @@ public:
      */
     void updateWallet(const uint256 &hash, int status)
     {
-        OutputDebugStringF("updateWallet %s %i\n", hash.ToString().c_str(), status);
+        if (fDebug)
+            OutputDebugStringF("updateWallet %s %i\n", hash.ToString().c_str(), status);
         {
             LOCK(wallet->cs_wallet);
 
@@ -114,8 +116,8 @@ public:
                     status = CT_DELETED; /* In model, but want to hide, treat as deleted */
             }
 
-            OutputDebugStringF("   inWallet=%i inModel=%i Index=%i-%i showTransaction=%i derivedStatus=%i\n",
-                     inWallet, inModel, lowerIndex, upperIndex, showTransaction, status);
+            if (fDebug)
+                OutputDebugStringF("   inWallet=%i inModel=%i Index=%i-%i showTransaction=%i derivedStatus=%i\n", inWallet, inModel, lowerIndex, upperIndex, showTransaction, status);
 
             switch(status)
             {
@@ -295,7 +297,7 @@ QString TransactionTableModel::formatTxStatus(const TransactionRecord *wtx) cons
         status = tr("Confirmed (%1 confirmations)").arg(wtx->status.depth);
         break;
     }
-    if(wtx->type == TransactionRecord::Generated)
+    if(wtx->type == TransactionRecord::Generated  || wtx->type == TransactionRecord::StakeMint)
     {
         switch(wtx->status.maturity)
         {
@@ -359,6 +361,8 @@ QString TransactionTableModel::formatTxType(const TransactionRecord *wtx) const
         return tr("Sent to");
     case TransactionRecord::SendToSelf:
         return tr("Payment to yourself");
+    case TransactionRecord::StakeMint:
+        return tr("Minted");
     case TransactionRecord::Generated:
         return tr("Mined");
     default:
@@ -372,6 +376,8 @@ QVariant TransactionTableModel::txAddressDecoration(const TransactionRecord *wtx
     {
     case TransactionRecord::Generated:
         return QIcon(":/icons/tx_mined");
+    case TransactionRecord::StakeMint:
+	return QIcon(":/icons/tx_possed");
     case TransactionRecord::RecvWithAddress:
     case TransactionRecord::RecvFromOther:
         return QIcon(":/icons/tx_input");
@@ -392,11 +398,11 @@ QString TransactionTableModel::formatTxToAddress(const TransactionRecord *wtx, b
         return QString::fromStdString(wtx->address);
     case TransactionRecord::RecvWithAddress:
     case TransactionRecord::SendToAddress:
+    case TransactionRecord::Generated:
         return lookupAddress(wtx->address, tooltip);
     case TransactionRecord::SendToOther:
         return QString::fromStdString(wtx->address);
     case TransactionRecord::SendToSelf:
-    case TransactionRecord::Generated:
     default:
         return tr("(n/a)");
     }
@@ -409,13 +415,13 @@ QVariant TransactionTableModel::addressColor(const TransactionRecord *wtx) const
     {
     case TransactionRecord::RecvWithAddress:
     case TransactionRecord::SendToAddress:
+    case TransactionRecord::Generated:
         {
         QString label = walletModel->getAddressTableModel()->labelForAddress(QString::fromStdString(wtx->address));
         if(label.isEmpty())
             return COLOR_BAREADDRESS;
         } break;
     case TransactionRecord::SendToSelf:
-    case TransactionRecord::Generated:
         return COLOR_BAREADDRESS;
     default:
         break;
@@ -573,7 +579,7 @@ QVariant TransactionTableModel::data(const QModelIndex &index, int role) const
         return QString::fromStdString(rec->getTxID());
     case ConfirmedRole:
         // Return True if transaction counts for balance
-        return rec->status.confirmed && !(rec->type == TransactionRecord::Generated &&
+        return rec->status.confirmed && !((rec->type == TransactionRecord::Generated || rec->type == TransactionRecord::StakeMint) &&
                                           rec->status.maturity != TransactionStatus::Mature);
     case FormattedAmountRole:
         return formatTxAmount(rec, false);
