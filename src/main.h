@@ -470,7 +470,7 @@ public:
 
     void SetNull()
     {
-        if(nBestHeight >0) //starting with genesis
+        if(nBestHeight >POS_START_BLOCK)
           nVersion = CTransaction::POS_VERSION;
         else
           nVersion = CTransaction::POW_VERSION;
