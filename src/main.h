@@ -50,7 +50,7 @@ static const int COINBASE_MATURITY = 100;
 extern int nCoinbaseMaturity;
 
 static const int64 MAX_MINT_PROOF_OF_STAKE = 0.15 * COIN;	// 15% annual interest
-static const int POS_START_BLOCK = 637000;
+static const int POS_START_BLOCK = 640000;
 static const int64 nMaxClockDrift = 2 * 60 * 60;        // two hours
 
 // time to switch to KimotoGravityWell
