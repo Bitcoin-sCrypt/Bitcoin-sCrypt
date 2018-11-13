@@ -1107,8 +1107,10 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, uint64 Targ
 unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, bool fProofOfStake)//const CBlock *pblock)
 {
     /* current difficulty formula, darkcoin - DarkGravity v3, written by Evan Duffield - evan@darkcoin.io */
+
     const CBlockIndex *BlockLastSolved = pindexLast;
     const CBlockIndex *BlockReading = pindexLast;
+
     int64 nActualTimespan = 0;
     int64 LastBlockTime = 0;
     int64 PastBlocksMin = 24;
@@ -1170,9 +1172,87 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, bool fProofO
     return bnNew.GetCompact();
 }
 
-// for pos
-unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
+
+unsigned int static DarkGravityWave3fix(const CBlockIndex* pindexLast, bool fProofOfStake)//const CBlock *pblock)
 {
+    /* current difficulty formula, darkcoin - DarkGravity v3, written by Evan Duffield - evan@darkcoin.io */
+
+    const CBlockIndex *BlockLastSolved = GetLastBlockIndex(pindexLast,false);
+    const CBlockIndex *BlockReading = GetLastBlockIndex(pindexLast,false);
+    int64 nActualTimespan = 0;
+    int64 LastBlockTime = 0;
+    int64 PastBlocksMin = 24;
+    int64 PastBlocksMax = 24;
+    int64 CountBlocks = 0;
+    CBigNum PastDifficultyAverage;
+    CBigNum PastDifficultyAveragePrev;
+
+    if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) { 
+        return bnProofOfWorkLimit.GetCompact(); 
+    }
+        
+    for (unsigned int i = 1; BlockReading && BlockReading->nHeight > 0; i++) {
+        if (PastBlocksMax > 0 && i > PastBlocksMax) { break; }
+        CountBlocks++;
+
+        if(CountBlocks <= PastBlocksMin) {
+            if (CountBlocks == 1) { PastDifficultyAverage.SetCompact(BlockReading->nBits); }
+            else { PastDifficultyAverage = ((PastDifficultyAveragePrev * CountBlocks)+(CBigNum().SetCompact(BlockReading->nBits))) / (CountBlocks+1); }
+            PastDifficultyAveragePrev = PastDifficultyAverage;
+        }
+
+        if(LastBlockTime > 0){
+            int64 Diff = (LastBlockTime - BlockReading->GetBlockTime());
+            nActualTimespan += Diff;
+        }
+        LastBlockTime = BlockReading->GetBlockTime();      
+
+        do
+        {
+          if (BlockReading->pprev == NULL)
+          {
+            assert(BlockReading);
+            break;
+          }
+          BlockReading = BlockReading->pprev;
+        }
+        while (BlockReading->IsProofOfStake());
+    }
+    
+    CBigNum bnNew(PastDifficultyAverage);
+
+    int64 nTargetTimespan = CountBlocks*nTargetSpacing;
+
+    if (nActualTimespan < nTargetTimespan/3)
+        nActualTimespan = nTargetTimespan/3;
+    if (nActualTimespan > nTargetTimespan*3)
+        nActualTimespan = nTargetTimespan*3;
+
+    // Retarget
+    bnNew *= nActualTimespan;
+    bnNew /= nTargetTimespan;
+	
+	// debug print
+    if (fDebug)
+    {
+      printf("DarkGravityWave3-FIX RETARGET\n");
+      printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nTargetTimespan, nActualTimespan);
+      printf("Before: %08x  %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString().c_str());
+      printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
+   }
+
+    if (bnNew > bnProofOfWorkLimit){
+        bnNew = bnProofOfWorkLimit;
+    }
+     
+    return bnNew.GetCompact();
+}
+
+// for pos
+unsigned int GetNextPosTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
+{
+  int64 myTargetTimespan = 60 * 60 * 24;  // 24 hours
+  int64 myTargetSpacingWorkMax = 2 * nStakeTargetSpacing; 
   CBigNum bnTargetLimit = bnProofOfStakeLimit;
 
   if (pindexLast == NULL)
@@ -1190,65 +1270,6 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
   {
     nActualSpacing = 1;
   }
-  else if(nActualSpacing > nTargetTimespan)
-  {
-    nActualSpacing = nTargetTimespan;
-  }
-
-  // ppcoin: target change every block
-  // ppcoin: retarget with exponential moving toward target spacing
-  CBigNum bnNew;
-  bnNew.SetCompact(pindexPrev->nBits);
-
-  int64 nTargetSpacing = fProofOfStake? nStakeTargetSpacing : min(nTargetSpacingWorkMax, (int64) nStakeTargetSpacing * (1 + pindexLast->nHeight - pindexPrev->nHeight));
-  int64 nInterval = nTargetTimespan / nTargetSpacing;
-  bnNew *= ((nInterval - 1) * nTargetSpacing + nActualSpacing + nActualSpacing);
-  bnNew /= ((nInterval + 1) * nTargetSpacing);
-	
-  if (bnNew > bnTargetLimit)
-    bnNew = bnTargetLimit;
-
-  return bnNew.GetCompact();
-}
-
-
-unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
-{
-
-  int64 myTargetTimespan = 60 * 60 * 24;  // 24 hours
-  int64 myTargetSpacingWorkMax = 2 * nStakeTargetSpacing; 
-  CBigNum bnTargetLimit = bnProofOfWorkLimit;
-
-  if(fProofOfStake)
-  {
-    bnTargetLimit = bnProofOfStakeLimit;
-  }
-  else
-  {
-    if (pindexLast->nTime > VERSION3_SWITCH_TIME)
-      return DarkGravityWave3(pindexLast, fProofOfStake);
-    if (pindexLast->nTime > VERSION2_SWITCH_TIME)
-      return GetNextTargetRequired_V2(pindexLast, fProofOfStake);
-    return GetNextTargetRequired_V1(pindexLast, fProofOfStake);
-  }
-
-  if (pindexLast == NULL)
-    return bnTargetLimit.GetCompact(); // genesis block
- 
-   const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, fProofOfStake);
-   if (pindexPrev->pprev == NULL)
-     return bnTargetLimit.GetCompact(); // first block
-
-   const CBlockIndex* pindexPrevPrev = GetLastBlockIndex(pindexPrev->pprev, fProofOfStake);
-   if (pindexPrevPrev->pprev == NULL)
-     return bnTargetLimit.GetCompact(); // second block
- 
-   int64 nActualSpacing = pindexPrev->GetBlockTime() - pindexPrevPrev->GetBlockTime();
-   if(nActualSpacing < 0)
-  {
-    nActualSpacing = 1;
-  }
-
   else if(nActualSpacing > myTargetTimespan)
   {
     nActualSpacing = myTargetTimespan;
@@ -1262,10 +1283,28 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfSta
   bnNew *= ((nInterval - 1) * nTargetSpacing + nActualSpacing + nActualSpacing);
   bnNew /= ((nInterval + 1) * nTargetSpacing);
 	
-   if (bnNew > bnTargetLimit)
-     bnNew = bnTargetLimit;
+  if (bnNew > bnTargetLimit)
+    bnNew = bnTargetLimit;
  
   return bnNew.GetCompact();
+}
+
+
+unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
+{
+  if(fProofOfStake)
+    return GetNextPosTargetRequired(pindexLast, true);
+
+  if (pindexLast->nHeight > POS_FIX_BLOCK)
+    return DarkGravityWave3fix(pindexLast,false);
+
+  if (pindexLast->nTime > VERSION3_SWITCH_TIME)
+    return DarkGravityWave3(pindexLast,false);
+
+  if (pindexLast->nTime > VERSION2_SWITCH_TIME)
+    return GetNextTargetRequired_V2(pindexLast,false);
+
+  return GetNextTargetRequired_V1(pindexLast,false);
 }
 
 unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, bool fProofOfStake)
@@ -3155,8 +3194,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         {
           vRecv >> pfrom->strSubVer;
           printf("peer connecting subver is %s",pfrom->strSubVer.c_str());
-          int iSubVer=pfrom->strSubVer.find("BTCS:2");
-          if((iSubVer < 1) && (nBestHeight > POS_START_BLOCK))
+          int iSubVer=pfrom->strSubVer.find("BTCS:2.1");
+          if((iSubVer < 1) && (nBestHeight > POS_FIX_BLOCK))
           {
             printf("  -  disconnecting .....\n");
             pfrom->fDisconnect = true;
@@ -4196,7 +4235,7 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
 
     if (fProofOfStake)  // attempt to find a coinstake
     {
-        pblock->nBits = GetNextTargetRequired(pindexPrev, true);
+        pblock->nBits = GetNextPosTargetRequired(pindexPrev, true);
         CTransaction txCoinStake;
         int64 nSearchTime = txCoinStake.nTime; // search to current time
         if (nSearchTime > nLastCoinStakeSearchTime)
