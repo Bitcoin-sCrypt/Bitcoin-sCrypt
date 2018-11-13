@@ -1181,7 +1181,7 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, bool fProofO
 }
 
 // for pos
-unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
+unsigned int GetNextPosTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
   CBigNum bnTargetLimit = bnProofOfStakeLimit;
 
@@ -4164,7 +4164,7 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
 
     if (fProofOfStake)  // attempt to find a coinstake
     {
-        pblock->nBits = GetNextTargetRequired(pindexPrev, true);
+        pblock->nBits = GetNextPosTargetRequired(pindexPrev, true);
         CTransaction txCoinStake;
         int64 nSearchTime = txCoinStake.nTime; // search to current time
         if (nSearchTime > nLastCoinStakeSearchTime)
