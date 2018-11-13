@@ -1107,9 +1107,77 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, uint64 Targ
 unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, bool fProofOfStake)//const CBlock *pblock)
 {
     /* current difficulty formula, darkcoin - DarkGravity v3, written by Evan Duffield - evan@darkcoin.io */
-//    const CBlockIndex *BlockLastSolved = pindexLast;
+
+    const CBlockIndex *BlockLastSolved = pindexLast;
+    const CBlockIndex *BlockReading = pindexLast;
+
+    int64 nActualTimespan = 0;
+    int64 LastBlockTime = 0;
+    int64 PastBlocksMin = 24;
+    int64 PastBlocksMax = 24;
+    int64 CountBlocks = 0;
+    CBigNum PastDifficultyAverage;
+    CBigNum PastDifficultyAveragePrev;
+
+    if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) { 
+        return bnProofOfWorkLimit.GetCompact(); 
+    }
+        
+    for (unsigned int i = 1; BlockReading && BlockReading->nHeight > 0; i++) {
+        if (PastBlocksMax > 0 && i > PastBlocksMax) { break; }
+        CountBlocks++;
+
+        if(CountBlocks <= PastBlocksMin) {
+            if (CountBlocks == 1) { PastDifficultyAverage.SetCompact(BlockReading->nBits); }
+            else { PastDifficultyAverage = ((PastDifficultyAveragePrev * CountBlocks)+(CBigNum().SetCompact(BlockReading->nBits))) / (CountBlocks+1); }
+            PastDifficultyAveragePrev = PastDifficultyAverage;
+        }
+
+        if(LastBlockTime > 0){
+            int64 Diff = (LastBlockTime - BlockReading->GetBlockTime());
+            nActualTimespan += Diff;
+        }
+        LastBlockTime = BlockReading->GetBlockTime();      
+
+        if (BlockReading->pprev == NULL) { assert(BlockReading); break; }
+        BlockReading = BlockReading->pprev;
+    }
+    
+    CBigNum bnNew(PastDifficultyAverage);
+
+    int64 nTargetTimespan = CountBlocks*nTargetSpacing;
+
+    if (nActualTimespan < nTargetTimespan/3)
+        nActualTimespan = nTargetTimespan/3;
+    if (nActualTimespan > nTargetTimespan*3)
+        nActualTimespan = nTargetTimespan*3;
+
+    // Retarget
+    bnNew *= nActualTimespan;
+    bnNew /= nTargetTimespan;
+	
+	// debug print
+    if (fDebug)
+    {
+      printf("DarkGravityWave3 RETARGET\n");
+      printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nTargetTimespan, nActualTimespan);
+      printf("Before: %08x  %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString().c_str());
+      printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
+   }
+
+    if (bnNew > bnProofOfWorkLimit){
+        bnNew = bnProofOfWorkLimit;
+    }
+     
+    return bnNew.GetCompact();
+}
+
+
+unsigned int static DarkGravityWave3fix(const CBlockIndex* pindexLast, bool fProofOfStake)//const CBlock *pblock)
+{
+    /* current difficulty formula, darkcoin - DarkGravity v3, written by Evan Duffield - evan@darkcoin.io */
+
     const CBlockIndex *BlockLastSolved = GetLastBlockIndex(pindexLast,false);
-//    const CBlockIndex *BlockReading = pindexLast;
     const CBlockIndex *BlockReading = GetLastBlockIndex(pindexLast,false);
     int64 nActualTimespan = 0;
     int64 LastBlockTime = 0;
@@ -1167,7 +1235,7 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, bool fProofO
 	// debug print
     if (fDebug)
     {
-      printf("DarkGravityWave3 RETARGET\n");
+      printf("DarkGravityWave3-FIX RETARGET\n");
       printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nTargetTimespan, nActualTimespan);
       printf("Before: %08x  %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString().c_str());
       printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
@@ -1183,6 +1251,8 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, bool fProofO
 // for pos
 unsigned int GetNextPosTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
+  int64 myTargetTimespan = 60 * 60 * 24;  // 24 hours
+  int64 myTargetSpacingWorkMax = 2 * nStakeTargetSpacing; 
   CBigNum bnTargetLimit = bnProofOfStakeLimit;
 
   if (pindexLast == NULL)
@@ -1200,24 +1270,22 @@ unsigned int GetNextPosTargetRequired(const CBlockIndex* pindexLast, bool fProof
   {
     nActualSpacing = 1;
   }
-  else if(nActualSpacing > nTargetTimespan)
+  else if(nActualSpacing > myTargetTimespan)
   {
-    nActualSpacing = nTargetTimespan;
+    nActualSpacing = myTargetTimespan;
   }
-
   // ppcoin: target change every block
   // ppcoin: retarget with exponential moving toward target spacing
   CBigNum bnNew;
   bnNew.SetCompact(pindexPrev->nBits);
-
-  int64 nTargetSpacing = fProofOfStake? nStakeTargetSpacing : min(nTargetSpacingWorkMax, (int64) nStakeTargetSpacing * (1 + pindexLast->nHeight - pindexPrev->nHeight));
-  int64 nInterval = nTargetTimespan / nTargetSpacing;
+  int64 nTargetSpacing = fProofOfStake? nStakeTargetSpacing : min(myTargetSpacingWorkMax, (int64) nStakeTargetSpacing * (1 + pindexLast->nHeight - pindexPrev->nHeight));
+  int64 nInterval = myTargetTimespan / nTargetSpacing;
   bnNew *= ((nInterval - 1) * nTargetSpacing + nActualSpacing + nActualSpacing);
   bnNew /= ((nInterval + 1) * nTargetSpacing);
 	
   if (bnNew > bnTargetLimit)
     bnNew = bnTargetLimit;
-
+ 
   return bnNew.GetCompact();
 }
 
@@ -1226,6 +1294,9 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfSta
 {
   if(fProofOfStake)
     return GetNextPosTargetRequired(pindexLast, true);
+
+  if (pindexLast->nHeight > POS_FIX_BLOCK)
+    return DarkGravityWave3fix(pindexLast,false);
 
   if (pindexLast->nTime > VERSION3_SWITCH_TIME)
     return DarkGravityWave3(pindexLast,false);
@@ -3123,8 +3194,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         {
           vRecv >> pfrom->strSubVer;
           printf("peer connecting subver is %s",pfrom->strSubVer.c_str());
-          int iSubVer=pfrom->strSubVer.find("BTCS:2");
-          if((iSubVer < 1) && (nBestHeight > POS_START_BLOCK))
+          int iSubVer=pfrom->strSubVer.find("BTCS:2.1");
+          if((iSubVer < 1) && (nBestHeight > POS_FIX_BLOCK))
           {
             printf("  -  disconnecting .....\n");
             pfrom->fDisconnect = true;

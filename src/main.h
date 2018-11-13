@@ -51,8 +51,8 @@ extern int nCoinbaseMaturity;
 
 static const int64 MAX_MINT_PROOF_OF_STAKE = 0.15 * COIN;	// 15% annual interest
 
-//static const int POS_START_BLOCK = 640000;
-static const int POS_START_BLOCK = 100;
+static const int POS_START_BLOCK = 640000;
+static const int POS_FIX_BLOCK=730000;
 
 static const int64 nMaxClockDrift = 2 * 60 * 60;        // two hours
 
@@ -467,7 +467,6 @@ public:
         READWRITE(nLockTime);
 
         if(nVersion > 2) 
-//        if((nVersion > POW_VERSION) &&(nBestHeight > 370000))
           READWRITE(nTime);
     )
 
@@ -856,7 +855,7 @@ class CBlock
 {
 public:
     // header
-    static const int CURRENT_VERSION=2;
+    static const int CURRENT_VERSION=3;
     int nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
