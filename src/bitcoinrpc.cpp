@@ -474,9 +474,7 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex)
     result.push_back(Pair("time", (boost::int64_t)block.GetBlockTime()));
     result.push_back(Pair("nonce", (boost::uint64_t)block.nNonce));
     result.push_back(Pair("bits", HexBits(block.nBits)));
-    result.push_back(Pair("PoW difficulty", GetDifficulty(blockindex)));
-    result.push_back(Pair("PoS difficulty", GetDifficulty(GetLastBlockIndex(pindexBest, true))));
-
+    result.push_back(Pair("difficulty", GetDifficulty(blockindex)));
     if (blockindex->pprev)
         result.push_back(Pair("previousblockhash", blockindex->pprev->GetBlockHash().GetHex()));
     if (blockindex->pnext)
@@ -647,8 +645,7 @@ Value getmininginfo(const Array& params, bool fHelp)
     obj.push_back(Pair("blocks",        (int)nBestHeight));
     obj.push_back(Pair("currentblocksize",(uint64_t)nLastBlockSize));
     obj.push_back(Pair("currentblocktx",(uint64_t)nLastBlockTx));
-    obj.push_back(Pair("pow difficulty",    (double)GetDifficulty()));
-    obj.push_back(Pair("pos difficulty", GetDifficulty(GetLastBlockIndex(pindexBest, true))));
+    obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
     obj.push_back(Pair("errors",        GetWarnings("statusbar")));
     obj.push_back(Pair("generate",      GetBoolArg("-gen")));
     obj.push_back(Pair("genproclimit",  (int)GetArg("-genproclimit", -1)));
@@ -1144,8 +1141,7 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("blocks",        (int)nBestHeight));
     obj.push_back(Pair("connections",   (int)vNodes.size()));
     obj.push_back(Pair("proxy",         (addrProxy.IsValid() ? addrProxy.ToStringIPPort() : string())));
-    obj.push_back(Pair("pow difficulty",    (double)GetDifficulty()));
-    obj.push_back(Pair("pos difficulty", GetDifficulty(GetLastBlockIndex(pindexBest, true))));
+    obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
     obj.push_back(Pair("testnet",       fTestNet));
     obj.push_back(Pair("keypoololdest", (boost::int64_t)pwalletMain->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize",   pwalletMain->GetKeyPoolSize()));
