@@ -129,10 +129,21 @@ void static EraseFromWallets(uint256 hash)
 }
 
 // make sure all wallets know about the given transaction, in the given block
-void SyncWithWallets(const CTransaction& tx, const CBlock* pblock, bool fUpdate)
+void SyncWithWallets(const CTransaction& tx, const CBlock* pblock, bool fUpdate,bool fConnect)
 {
-    BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
-        pwallet->AddToWalletIfInvolvingMe(tx, pblock, fUpdate);
+  if (!fConnect)
+  {
+    // ppcoin: wallets need to refund inputs when disconnecting coinstake
+    if (tx.IsCoinStake())
+    {
+      BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
+        if (pwallet->IsFromMe(tx))
+          pwallet->DisableTransaction(tx);
+    }
+    return;
+  }
+  BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
+    pwallet->AddToWalletIfInvolvingMe(tx, pblock, fUpdate);
 }
 
 // notify wallets about a new best chain
