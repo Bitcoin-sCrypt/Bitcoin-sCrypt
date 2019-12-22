@@ -1,4 +1,4 @@
-Bitcoin-sCrypt-Qt: Qt4 GUI for Bitcoin sCrypt
+Bitcoin-sCrypt-Qt: Qt5 GUI for Bitcoin sCrypt
 ================================
 
 Build instructions
@@ -7,14 +7,19 @@ Build instructions
 Debian Linux
 -------------
 
-First, make sure that the required packages for Qt4 development of your
+First, make sure that the required packages for Qt5 development of your
 distribution are installed, for Debian and Ubuntu these are:
 
 ::
 
-    apt-get install qt4-qmake libqt4-dev build-essential libboost-dev libboost-system-dev \
-        libboost-filesystem-dev libboost-program-options-dev libboost-thread-dev \
-        libssl-dev libdb4.8++-dev
+sudo apt update
+sudo apt upgrade
+
+sudo apt install qt5-default build-essential libboost-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-thread-dev libssl-dev libminiupnpc-dev libdb++-dev
+
+sudo apt install libssl1.0-dev
+sudo apt-get install qttools5-dev-tools
+sudo apt-get install zlib1g-dev
 
 then execute the following:
 
@@ -122,9 +127,9 @@ flag to qmake to control this:
 Berkely DB version warning
 ==========================
 
-A warning for people using the *static binary* version of Litecoin on a Linux/UNIX-ish system (tl;dr: **Berkely DB databases are not forward compatible**).
+A warning for people using the *static binary* version of Bitcoin-sCrypt on a Linux/UNIX-ish system (tl;dr: **Berkely DB databases are not forward compatible**).
 
-The static binary version of Litecoin is linked against libdb4.8 (see also `this Debian issue`_).
+The static binary version of Bitcoin-sCrypt is linked against libdb4.8 (see also `this Debian issue`_).
 
 Now the nasty thing is that databases from 5.X are not compatible with 4.X.
 
