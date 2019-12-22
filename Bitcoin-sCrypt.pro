@@ -4,7 +4,7 @@ VERSION = 2.2.0.1
 INCLUDEPATH += src src/json src/qt /usr/include/libdb4
 DEFINES += QT_GUI BOOST_THREAD_USE_LIB BOOST_SPIRIT_THREADSAFE BOOST_ASIO_ENABLE_OLD_SERVICES
 CONFIG += no_include_pwd
-CONFIG += thread
+CONFIG += thread -w
 QT += widgets
 QT += network
 
@@ -13,16 +13,14 @@ MOC_DIR = build
 UI_DIR = build
 
 # use: qmake "RELEASE=1"
-contains(RELEASE, 1)
-{
-  # Mac: compile for maximum compatibility (10.5, 32-bit)
-  macx:QMAKE_CXXFLAGS += -mmacosx-version-min=10.5 -arch i386 -isysroot /Developer/SDKs/MacOSX10.5.sdk
+contains(RELEASE, 1) {
+    # Mac: compile for maximum compatibility (10.5, 32-bit)
+    macx:QMAKE_CXXFLAGS += -mmacosx-version-min=10.5 -arch i386 -isysroot /Developer/SDKs/MacOSX10.5.sdk
 
-  !windows:!macx
-  {
-    # Linux: static link
-    LIBS += -Wl,-Bstatic
-  }
+    !windows:!macx {
+        # Linux: static link
+        LIBS += -Wl,-Bstatic
+    }
 }
 
 !win32 {
@@ -91,6 +89,7 @@ contains(BITCOIN_NEED_QT_PLUGINS, 1) {
 QMAKE_CXXFLAGS += -msse2 -w
 QMAKE_CFLAGS += -msse2
 
+QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter -Wstack-protector
 
 # Input
 DEPENDPATH += src src/json src/qt
@@ -376,5 +375,3 @@ contains(RELEASE, 1) {
 }
 
 system($$QMAKE_LRELEASE -silent $$_PRO_FILE_)
-
-

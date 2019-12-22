@@ -39,15 +39,15 @@ static const int64 CENT = 1000000;
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 #define printf              OutputDebugStringF
 
-#ifndef PRI64d
+#ifndef  PRI64d 
 #if defined(_MSC_VER) || defined(__MSVCRT__)
-#define PRI64d  "I64d"
+#define  PRI64d   "I64d"
 #define PRI64u  "I64u"
-#define PRI64x  "I64x"
+#define  PRI64x   "I64x"
 #else
-#define PRI64d  "lld"
+#define  PRI64d   "lld"
 #define PRI64u  "llu"
-#define PRI64x  "llx"
+#define  PRI64x   "llx"
 #endif
 #endif
 
@@ -57,14 +57,14 @@ static const int64 CENT = 1000000;
      http://msdn.microsoft.com/en-us/library/tcxf1dw6%28v=vs.100%29.aspx
    */
   #define PRIszx    "Ix"
-  #define PRIszu    "Iu"
+  #define  PRIszu     "Iu"
   #define PRIszd    "Id"
   #define PRIpdx    "Ix"
   #define PRIpdu    "Iu"
   #define PRIpdd    "Id"
 #else /* C99 standard */
   #define PRIszx    "zx"
-  #define PRIszu    "zu"
+  #define  PRIszu     "zu"
   #define PRIszd    "zd"
   #define PRIpdx    "tx"
   #define PRIpdu    "tu"
@@ -205,7 +205,7 @@ void runCommand(std::string strCommand);
 
 inline std::string i64tostr(int64 n)
 {
-    return strprintf("%"PRI64d, n);
+    return strprintf("%" PRI64d , n);
 }
 
 inline std::string itostr(int n)

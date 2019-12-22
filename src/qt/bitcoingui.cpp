@@ -1225,7 +1225,7 @@ void BitcoinGUI::zapWallet()
   
   progressBarLabel->setText(tr("Wallet loaded..."));
   splashMessage(_("Wallet loaded..."));
-  printf(" zap wallet  load     %15"PRI64d"ms\n", GetTimeMillis() - nStart);
+  printf(" zap wallet  load     %15" PRI64d "ms\n", GetTimeMillis() - nStart);
 
   progressBarLabel->setText(tr("Loading lables..."));
   splashMessage(_("Loaded lables..."));
@@ -1408,7 +1408,15 @@ void BitcoinGUI::openConfig()
   /* Open bitcoin-scrypt.conf with the associated application */
   if (boost::filesystem::exists(pathConfig))
     QDesktopServices::openUrl(QUrl::fromLocalFile(pathConfig.string().c_str()));
-printf("pathConfig=%s\n",pathConfig.string().c_str());
+  else
+  {
+    //create file
+    boost::filesystem::ofstream(pathConfig.string().c_str());
+    // rename to same name, also closes if open
+    boost::filesystem::rename(pathConfig.string().c_str(),pathConfig.string().c_str());
+    /* Open LitecoinPlus.conf with the associated application */
+    QDesktopServices::openUrl(QUrl::fromLocalFile(pathConfig.string().c_str()));
+  }
 }
 
 void BitcoinGUI::postMessage(QString &mess)
