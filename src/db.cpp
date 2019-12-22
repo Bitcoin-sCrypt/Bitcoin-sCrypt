@@ -843,7 +843,7 @@ bool CTxDB::LoadBlockIndexGuts()
     unsigned int steptemp=0;
     string tempmess;
 
-    loop
+    loop()
     {
         // Read next record
         CDataStream ssKey(SER_DISK, CLIENT_VERSION);

@@ -14,6 +14,7 @@ class OverviewPage;
 class MiningPage;
 class AddressBookPage;
 class SkinsPage;
+class ChatterboxPage;
 class SendCoinsDialog;
 class SignVerifyMessageDialog;
 class Notificator;
@@ -50,6 +51,7 @@ public:
         functionality.
     */
     void setWalletModel(WalletModel *walletModel);
+    void postMessage(QString &mess);
 
 protected:
     void changeEvent(QEvent *e);
@@ -68,6 +70,7 @@ private:
     QWidget *transactionsPage;
     AddressBookPage *addressBookPage;
 	SkinsPage *skinsPage;
+	ChatterboxPage *chatterboxPage;
     AddressBookPage *receiveCoinsPage;
     SendCoinsDialog *sendCoinsPage;
     SignVerifyMessageDialog *signVerifyMessageDialog;
@@ -88,6 +91,8 @@ private:
     QAction *sendCoinsAction;
     QAction *addressBookAction;
 	QAction *skinsPageAction;
+	QAction *chatterboxPageAction;
+	QAction* openConfigAction;
     QAction *signMessageAction;
     QAction *verifyMessageAction;
     QAction *firstClassMessagingAction;
@@ -167,10 +172,15 @@ private slots:
     void gotoAddressBookPage();
     /** Switch to skins page */
     void gotoSkinsPage();
+    /** Switch to chatter box page */
+    void gotoChatterboxPage();
     /** Switch to receive coins page */
     void gotoReceiveCoinsPage();
     /** Switch to send coins page */
     void gotoSendCoinsPage();
+
+    // Open bitcoin-scrypt.conf
+    void openConfig();
 
     /** Show Sign/Verify Message dialog and switch to sign message tab */
     void gotoSignMessageTab(QString addr = "");

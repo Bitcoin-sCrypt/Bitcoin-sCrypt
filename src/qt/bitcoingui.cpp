@@ -32,6 +32,7 @@
 #include "bitcoinrpc.h"
 #include "version.h"
 #include "skinspage.h"
+#include "chatterboxpage.h"
 
 #ifdef Q_WS_MAC
 #include "macdockiconhandler.h"
@@ -62,6 +63,7 @@
 #include <QUrl>
 #include <QStyle>
 #include <QSplashScreen>
+#include <QMimeData>
 
 #include <iostream>
 
@@ -128,6 +130,7 @@ menuBar()->setNativeMenuBar(false);// menubar on form instead
     addressBookPage = new AddressBookPage(AddressBookPage::ForEditing, AddressBookPage::SendingTab);
 
 	skinsPage = new SkinsPage(this);
+	chatterboxPage = new ChatterboxPage(this);
 
     receiveCoinsPage = new AddressBookPage(AddressBookPage::ForEditing, AddressBookPage::ReceivingTab);
 
@@ -145,6 +148,7 @@ menuBar()->setNativeMenuBar(false);// menubar on form instead
     centralWidget->addWidget(transactionsPage);
     centralWidget->addWidget(addressBookPage);
 	centralWidget->addWidget(skinsPage);
+	centralWidget->addWidget(chatterboxPage);
     centralWidget->addWidget(receiveCoinsPage);
     centralWidget->addWidget(sendCoinsPage);
 #ifdef FIRST_CLASS_MESSAGING
@@ -232,6 +236,8 @@ menuBar()->setNativeMenuBar(false);// menubar on form instead
     // Clicking on "Sign Message" in the receive coins page sends you to the sign message tab
     connect(receiveCoinsPage, SIGNAL(signMessage(QString)), this, SLOT(gotoSignMessageTab(QString)));
 
+    connect(openConfigAction, SIGNAL(triggered()), this, SLOT(openConfig()));
+
     gotoOverviewPage();
 }
 
@@ -277,13 +283,22 @@ void BitcoinGUI::createActions()
     skinsPageAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
     tabGroup->addAction(skinsPageAction);
 
-    receiveCoinsAction = new QAction(QIcon(":/icons/receiving_addresses"), tr("&Receive coins"), this);
+    chatterboxPageAction = new QAction(QIcon(":/icons/gears"), tr("&Chat"), this);
+    chatterboxPageAction->setToolTip(tr("Open chat in your wallet"));
+    chatterboxPageAction->setCheckable(true);
+    chatterboxPageAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
+    tabGroup->addAction(chatterboxPageAction);
+
+    openConfigAction = new QAction(QIcon(":/icons/edit"), tr("Open Wallet &Configuration File"), this);
+    openConfigAction->setStatusTip(tr("Open wallet configuration file"));
+
+    receiveCoinsAction = new QAction(QIcon(":/icons/receiving_addresses"), tr("&Receive"), this);
     receiveCoinsAction->setToolTip(tr("Show the list of addresses for receiving payments"));
     receiveCoinsAction->setCheckable(true);
     receiveCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_3));
     tabGroup->addAction(receiveCoinsAction);
 
-    sendCoinsAction = new QAction(QIcon(":/icons/send"), tr("&Send coins"), this);
+    sendCoinsAction = new QAction(QIcon(":/icons/send"), tr("&Send"), this);
     sendCoinsAction->setToolTip(tr("Send coins to a Bitcoin-sCrypt address"));
     sendCoinsAction->setCheckable(true);
     sendCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_2));
@@ -313,6 +328,8 @@ void BitcoinGUI::createActions()
     connect(addressBookAction, SIGNAL(triggered()), this, SLOT(gotoAddressBookPage()));
     connect(skinsPageAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(skinsPageAction, SIGNAL(triggered()), this, SLOT(gotoSkinsPage()));
+    connect(chatterboxPageAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(chatterboxPageAction, SIGNAL(triggered()), this, SLOT(gotoChatterboxPage()));
 
     connect(receiveCoinsAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(receiveCoinsAction, SIGNAL(triggered()), this, SLOT(gotoReceiveCoinsPage()));
@@ -402,6 +419,7 @@ void BitcoinGUI::createMenuBar()
     file->addAction(quitAction);
 
     QMenu *settings = appMenuBar->addMenu(tr("&Settings"));
+    settings->addAction(openConfigAction);
     settings->addAction(optionsAction);
 
     QMenu *wallet = appMenuBar->addMenu(tr("&Wallet"));
@@ -442,6 +460,7 @@ void BitcoinGUI::createToolBars()
     QToolBar *toolbar2 = addToolBar(tr("Actions toolbar"));
     toolbar2->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 	toolbar2->addAction(skinsPageAction);
+	toolbar2->addAction(chatterboxPageAction);
 }
 
 void BitcoinGUI::setClientModel(ClientModel *clientModel)
@@ -548,6 +567,7 @@ void BitcoinGUI::createTrayIcon()
     trayIconMenu->addAction(verifyMessageAction);
     trayIconMenu->addSeparator();
     trayIconMenu->addAction(optionsAction);
+    trayIconMenu->addAction(openConfigAction);
     trayIconMenu->addAction(openRPCConsoleAction);
 #ifndef Q_WS_MAC // This is built-in on Mac
     trayIconMenu->addSeparator();
@@ -873,6 +893,15 @@ void BitcoinGUI::gotoSkinsPage()
 {
     skinsPageAction->setChecked(true);
     centralWidget->setCurrentWidget(skinsPage);
+
+    exportAction->setEnabled(false);
+    disconnect(exportAction, SIGNAL(triggered()), 0, 0);
+}
+
+void BitcoinGUI::gotoChatterboxPage()
+{
+    chatterboxPageAction->setChecked(true);
+    centralWidget->setCurrentWidget(chatterboxPage);
 
     exportAction->setEnabled(false);
     disconnect(exportAction, SIGNAL(triggered()), 0, 0);
@@ -1257,7 +1286,8 @@ void BitcoinGUI::splashMessage(const std::string &message, bool quickSleep)
 
 void BitcoinGUI::backupWallet()
 {
-    QString saveDir = QDesktopServices::storageLocation(QDesktopServices::DocumentsLocation);
+//    QString saveDir = QDesktopServices::storageLocation(QDesktopServices::DocumentsLocation);
+    QString saveDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     QString filename = QFileDialog::getSaveFileName(this, tr("Backup Wallet"), saveDir, tr("Wallet Data (*.dat)"));
     if(!filename.isEmpty()) {
         if(!walletModel->backupWallet(filename)) {
@@ -1371,3 +1401,31 @@ void BitcoinGUI::updateMintingWeights()
         nNetworkWeight = GetPoSKernelPS();
     }
 }
+
+void BitcoinGUI::openConfig()
+{
+  boost::filesystem::path pathConfig = GetConfigFile();
+  /* Open bitcoin-scrypt.conf with the associated application */
+  if (boost::filesystem::exists(pathConfig))
+    QDesktopServices::openUrl(QUrl::fromLocalFile(pathConfig.string().c_str()));
+printf("pathConfig=%s\n",pathConfig.string().c_str());
+}
+
+void BitcoinGUI::postMessage(QString &mess)
+{
+printf("postMessage called\n");
+  QString strStatusBarWarnings = clientModel->getStatusBarWarnings();
+  if (strStatusBarWarnings.isEmpty())
+  {
+    progressBarLabel->setText(mess);
+//    progressBarLabel->setText(tr("someone just joined"));
+    progressBar->setVisible(false);
+    progressBarLabel->setVisible(true);
+printf("user joined %s\n",mess.toStdString().c_str());
+  }
+  else
+  {
+    printf("if strStatusBarWarnings.isEmpty() failed. \n");
+  }
+}
+
