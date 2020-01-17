@@ -607,19 +607,19 @@ inline void SetThreadPriority(int nPriority)
     SetThreadPriority(GetCurrentThread(), nPriority);
 }
 #else
-inline hpthread_t CreateThread(void(*pfn)(void*), void* parg, bool fWantHandle=false)
+inline pthread_t CreateThread(void(*pfn)(void*), void* parg, bool fWantHandle=false)
 {
-    hpthread_t hthread = 0;
-    int ret = hpthread_create(&hthread, NULL, (void*(*)(void*))pfn, parg);
+    pthread_t hthread = 0;
+    int ret = pthread_create(&hthread, NULL, (void*(*)(void*))pfn, parg);
     if (ret != 0)
     {
-        printf("Error: hpthread_create() returned %d\n", ret);
-        return (hpthread_t)0;
+        printf("Error: pthread_create() returned %d\n", ret);
+        return (pthread_t)0;
     }
     if (!fWantHandle)
     {
-        hpthread_detach(hthread);
-        return (hpthread_t)-1;
+        pthread_detach(hthread);
+        return (pthread_t)-1;
     }
     return hthread;
 }
