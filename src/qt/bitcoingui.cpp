@@ -33,6 +33,7 @@
 #include "version.h"
 #include "skinspage.h"
 #include "chatterboxpage.h"
+#include "splash.h"
 
 #ifdef Q_WS_MAC
 #include "macdockiconhandler.h"
@@ -70,14 +71,25 @@
 extern CWallet *pwalletMain;
 extern int64 nLastCoinStakeSearchInterval;
 extern unsigned int nStakeTargetSpacing;
-static QSplashScreen *splashref;
 extern BitcoinGUI *guiref;
+extern Splash *stwref;
 
 void updateBitcoinGUISplashMessage(char *message)
 {
-	if (guiref) {
-		guiref-> splashMessage(_(message), true);
-	}
+  if(guiref)
+  {
+    guiref-> splashMessage(_(message), true);
+  }
+  if(stwref)
+  {
+    stwref->setMessage(message);
+  }
+}
+
+// by Simone: expose loadSkin call
+void BitcoinGUI::loadSkin()
+{
+	skinsPage->loadSkin();
 }
 
 BitcoinGUI::BitcoinGUI(QWidget *parent):
@@ -1144,11 +1156,9 @@ void BitcoinGUI::zapWallet()
   progressBarLabel->setVisible(true);
 
   // bring up splash screen
-  QSplashScreen splash(QPixmap(":/images/splash"), 0);
-  splash.setEnabled(false);
-  splash.show();
-  splash.setAutoFillBackground(true);
-  splashref = &splash;
+	stwref->setMessage("");
+	stwref->systemOnTop();
+	stwref->showSplash();
 
   // Zap the wallet as requested by user
   // 1= save meta data
@@ -1168,8 +1178,7 @@ void BitcoinGUI::zapWallet()
     progressBarLabel->setText(tr("Error loading wallet.dat: Wallet corrupted."));
     splashMessage(_("Error loading wallet.dat: Wallet corrupted"));
     printf("Error loading wallet.dat: Wallet corrupted\n");
-    if (splashref)
-      splash.close();
+    stwref->hide();
     return;
   }
 
@@ -1211,8 +1220,7 @@ void BitcoinGUI::zapWallet()
   progressBarLabel->setText(tr("Wallet needs to be rewriten. Please restart BitBar to complete."));
       setStatusTip(tr("Wallet needed to be rewritten: restart BitBar to complete"));
       printf("Wallet needed to be rewritten: restart BitBar to complete\n");
-      if (splashref)
-        splash.close();
+      stwref->hide();
       return;
     }
     else
@@ -1264,23 +1272,24 @@ void BitcoinGUI::zapWallet()
   progressBarLabel->setVisible(false);
 
 //  close splash screen
-  if (splashref)
-    splash.close();
+  stwref->hide();
 
   QMessageBox::warning(this, tr("Zap Wallet Finished."), tr("Please restart your wallet for changes to take effect."));
 }
 
 void BitcoinGUI::splashMessage(const std::string &message, bool quickSleep)
 {
-  if(splashref)
+  if(stwref)
   {
-    splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(0xfce2cc));
-    QApplication::instance()->processEvents();
-	if (quickSleep) {
-		Sleep(50);
-	} else {
-		Sleep(500);
-	}
+    stwref->setMessage(message.c_str());
+    if (quickSleep)
+    {
+      Sleep(50);
+    }
+    else
+    {
+      Sleep(500);
+    }
   }
 }
 
