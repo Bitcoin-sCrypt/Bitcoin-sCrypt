@@ -10,7 +10,7 @@ Splash::Splash(QWidget *parent) :
 {
 // general setup
     ui->setupUi(this);
-	setWindowTitle(tr("LitecoinPlus") + " - " + QString::fromStdString(CLIENT_BUILD));
+	setWindowTitle(tr("Bitcoin sCrypt") + " - " + QString::fromStdString(CLIENT_BUILD));
 
 // adds a timer that randomly replace background
 	timer = new QTimer(this);
@@ -26,7 +26,7 @@ void Splash::showSplash()
 {
     // Center startup window in the screen
 	QRect screenGeometry = QApplication::desktop()->screenGeometry();
-	int x = 480;//(screenGeometry.width() - width()) / 2;
+	int x = 478;//(screenGeometry.width() - width()) / 2;
 	int y = 320;//(screenGeometry.height() - height()) / 2;
 	move(x, y);
     show();
