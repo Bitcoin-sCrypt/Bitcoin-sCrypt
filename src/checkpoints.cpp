@@ -42,6 +42,7 @@ namespace Checkpoints
 	(	  303900, uint256("0x15a45618f2adca385f04826e2aeebfb5f664e58734db577a3d5cbb7126a294cf"))
 	(	  323000, uint256("0x8277801a42c75927d3b3a662753b3c6bf5f08a32bc3bdfab1537287cc6fb918d"))
 						;
+	(	 1724310, uint256("0x22762f7f0e5931b4c790735dfdd71155fddbc4f7ff8edffa11df5eee84e238d0"))
 
     bool CheckBlock(int nHeight, const uint256& hash)
     {

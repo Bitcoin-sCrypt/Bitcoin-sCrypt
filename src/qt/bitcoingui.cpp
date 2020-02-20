@@ -67,6 +67,8 @@
 #include <QMimeData>
 
 #include <iostream>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 extern CWallet *pwalletMain;
 extern int64 nLastCoinStakeSearchInterval;
@@ -1295,14 +1297,19 @@ void BitcoinGUI::splashMessage(const std::string &message, bool quickSleep)
 
 void BitcoinGUI::backupWallet()
 {
-//    QString saveDir = QDesktopServices::storageLocation(QDesktopServices::DocumentsLocation);
-    QString saveDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-    QString filename = QFileDialog::getSaveFileName(this, tr("Backup Wallet"), saveDir, tr("Wallet Data (*.dat)"));
-    if(!filename.isEmpty()) {
-        if(!walletModel->backupWallet(filename)) {
-            QMessageBox::warning(this, tr("Backup Failed"), tr("There was an error trying to save the wallet data to the new location."));
-        }
+#if QT_VERSION < 0x050000
+  QString saveDir = QDesktopServices::storageLocation(QDesktopServices::DocumentsLocation);
+#else
+  QString saveDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+#endif
+  QString filename = QFileDialog::getSaveFileName(this, tr("Backup Wallet"), saveDir, tr("Wallet Data (*.dat)"));
+  if(!filename.isEmpty())
+  {
+    if(!walletModel->backupWallet(filename))
+    {
+      QMessageBox::warning(this, tr("Backup Failed"), tr("There was an error trying to save the wallet data to the new location."));
     }
+  }
 }
 
 void BitcoinGUI::changePassphrase()
