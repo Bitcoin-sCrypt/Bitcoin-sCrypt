@@ -51,6 +51,7 @@ public:
         functionality.
     */
     void setWalletModel(WalletModel *walletModel);
+    void loadSkin();
     void postMessage(QString &mess);
 
 protected:

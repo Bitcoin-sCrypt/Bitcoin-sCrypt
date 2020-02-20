@@ -1,4 +1,4 @@
-Bitcoin - sCrypt v2.0-release
+Bitcoin - sCrypt v2.1-release
 
 Official website:  https://bitcoinscrypt.io
 

@@ -8,7 +8,9 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #else
-typedef int pid_t; /* define for windows compatiblity */
+#ifndef WIN64
+typedef int pid_t; /* define for Windows compatibility */
+#endif
 #endif
 #include <map>
 #include <vector>
@@ -574,9 +576,9 @@ public:
 // Note: It turns out we might have been able to use boost::thread
 // by using TerminateThread(boost::thread.native_handle(), 0);
 #ifdef WIN32
-typedef HANDLE pthread_t;
+typedef HANDLE hpthread_t;
 
-inline pthread_t CreateThread(void(*pfn)(void*), void* parg, bool fWantHandle=false)
+inline hpthread_t CreateThread(void(*pfn)(void*), void* parg, bool fWantHandle=false)
 {
     DWORD nUnused = 0;
     HANDLE hthread =
@@ -590,12 +592,12 @@ inline pthread_t CreateThread(void(*pfn)(void*), void* parg, bool fWantHandle=fa
     if (hthread == NULL)
     {
         printf("Error: CreateThread() returned %d\n", GetLastError());
-        return (pthread_t)0;
+        return (hpthread_t)0;
     }
     if (!fWantHandle)
     {
         CloseHandle(hthread);
-        return (pthread_t)-1;
+        return (hpthread_t)-1;
     }
     return hthread;
 }
