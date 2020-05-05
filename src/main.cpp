@@ -1306,7 +1306,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfSta
   if(fProofOfStake)
     return GetNextPosTargetRequired(pindexLast, true);
 
-  if (pindexLast->nHeight > POS_FIX_BLOCK)
+  if (pindexLast->nHeight > getPosFixBlock())
     return DarkGravityWave3fix(pindexLast,false);
 
   if (pindexLast->nTime > VERSION3_SWITCH_TIME)
@@ -1316,6 +1316,16 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfSta
     return GetNextTargetRequired_V2(pindexLast,false);
 
   return GetNextTargetRequired_V1(pindexLast,false);
+}
+
+int posFixBlock = 0;
+int getPosFixBlock()
+{
+	if (!posFixBlock)
+	{
+		posFixBlock = fTestNet ? TESTNET_POS_FIX_BLOCK : POS_FIX_BLOCK;
+	}
+	return posFixBlock;
 }
 
 unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, bool fProofOfStake)
@@ -2413,8 +2423,8 @@ bool CBlock::AcceptBlock()
     CBlockIndex* pindexPrev = (*mi).second;
     int nHeight = pindexPrev->nHeight+1;
 
-	if (IsProofOfStake() && nHeight < POS_START_BLOCK)
-        return DoS(100, error("AcceptBlock() : No PoS block allowed before %d (height= %d))",POS_START_BLOCK, nHeight));
+	if (IsProofOfStake() && nHeight < getPosStartBlock())
+        return DoS(100, error("AcceptBlock() : No PoS block allowed before %d (height= %d))",getPosStartBlock(), nHeight));
 
     // Check proof-of-work or proof-of-stake
     if (nBits != GetNextWorkRequired(pindexPrev, IsProofOfStake()))
@@ -3210,7 +3220,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
           vRecv >> pfrom->strSubVer;
           printf("peer connecting subver is %s",pfrom->strSubVer.c_str());
           int iSubVer=pfrom->strSubVer.find("BTCS:2");
-          if((iSubVer < 1) && (nBestHeight > POS_FIX_BLOCK))
+//          if((iSubVer < 1) && (nBestHeight > POS_FIX_BLOCK))
+          if((iSubVer < 1) && (nBestHeight > getPosFixBlock()))
           {
             printf("  -  disconnecting .....\n");
             pfrom->fDisconnect = true;
@@ -4828,7 +4839,7 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet)
 int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTime, int nHeight)
 {
   int64 nRewardCoinYear = 0;
-  if(nHeight > POS_START_BLOCK)
+  if(nHeight > getPosStartBlock())
   {  
     nRewardCoinYear = MAX_MINT_PROOF_OF_STAKE;
   }
@@ -4837,5 +4848,15 @@ int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTi
         printf("GetProofOfStakeReward(): create=%s nCoinAge=%" PRI64d " nBits=%d\n", FormatMoney(nSubsidy).c_str(), nCoinAge, nBits);
 
     return nSubsidy;
+}
+
+int posStartBlock = 0;
+int getPosStartBlock()
+{
+  if (!posStartBlock)
+  {
+    posStartBlock = fTestNet ? TESTNET_POS_START_BLOCK : POS_START_BLOCK;
+  }
+  return posStartBlock;
 }
 

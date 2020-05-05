@@ -52,7 +52,9 @@ extern int nCoinbaseMaturity;
 static const int64 MAX_MINT_PROOF_OF_STAKE = 0.15 * COIN;	// 15% annual interest
 
 static const int POS_START_BLOCK = 640000;
+static const int TESTNET_POS_START_BLOCK = 500;
 static const int POS_FIX_BLOCK=730000;
+static const int TESTNET_POS_FIX_BLOCK=4000;
 
 static const int64 nMaxClockDrift = 2 * 60 * 60;        // two hours
 
@@ -153,6 +155,8 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
 unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, bool fProofOfStake);
 unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, bool fProofOfStake);
 
+int getPosStartBlock();
+int getPosFixBlock();
 
 
 
@@ -472,10 +476,20 @@ public:
 
     void SetNull()
     {
+      if(fTestNet)
+      {
+        if(nBestHeight >TESTNET_POS_START_BLOCK)
+          nVersion = CTransaction::POS_VERSION;
+        else
+          nVersion = CTransaction::POW_VERSION;
+      }
+      else
+      {
         if(nBestHeight >POS_START_BLOCK)
           nVersion = CTransaction::POS_VERSION;
         else
           nVersion = CTransaction::POW_VERSION;
+      }
 
         vin.clear();
         vout.clear();
