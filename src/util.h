@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 #else
 #ifndef WIN64
-typedef int pid_t; /* define for Windows compatibility */
+ typedef int pid_t; /* define for Windows compatibility */
 #endif
 #endif
 #include <map>
