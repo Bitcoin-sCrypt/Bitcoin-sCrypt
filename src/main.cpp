@@ -3077,11 +3077,11 @@ string GetWarnings(string strFor)
         nPriority = 1000;
         strMiscWarning = _("stake too small, please dust your wallet");
       }
-      else
-      {
-        nPriority = 2000;
-        strStatusBar = strRPC = "WARNING: Displayed transactions may not be correct!  You may need to upgrade, or other nodes may need to upgrade.";
-      }
+//      else
+//      {
+//        nPriority = 900;
+//        strStatusBar = strRPC = "WARNING: Displayed transactions may not be correct!  You may need to upgrade, or other nodes may need to upgrade.";
+//      }
     }
 
     // Alerts
