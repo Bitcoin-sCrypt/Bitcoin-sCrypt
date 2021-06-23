@@ -1741,11 +1741,12 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
 // check that stake value is more than reward
           if (nStakeReward > nValueIn)
           {
-cout<<"nstakeReward "<< nStakeReward<<"\n";
-cout<<"nValueIn "<< nValueIn<<"\n";
+//cout<<"nstakeReward "<< nStakeReward<<"\n";
+//cout<<"nValueIn "<< nValueIn<<"\n";
             FailedStake=true;
-            strMiscWarning = _("stake is too small. please dust your wallet");
-            return DoS(0, error("stake amount is too small. please dust your wallet"));
+return 0;
+//            strMiscWarning = _("stake is too small. please dust your wallet");
+//            return DoS(0, error("stake amount is too small. please dust your wallet"));
           }
           else
           {
