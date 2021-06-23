@@ -3266,7 +3266,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
           }
 // drop connections from older versions than 2.2
           iSubVer=pfrom->strSubVer.find("BTCS:2.2");
-          if((iSubVer < 1) && (nBestHeight > getPosStartBlock()))
+          if((iSubVer < 1) && (nBestHeight > getPosReduceBlock()))
           {
             printf("  -  disconnecting .....\n");
             pfrom->fDisconnect = true;
@@ -4893,18 +4893,18 @@ int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTi
   }
 
 
-  if(nHeight>POS_REDUCE_BLOCK)
+  if(nHeight>getPosReduceBlock())
   {
     nSubsidy = GetBlockValue((int)nBestHeight, 0); //pos reward is now same as pow
   }
 
-  if(fTestNet)
-  {
-    if(nHeight>TESTNET_POS_REDUCE_BLOCK)
-    {
-      nSubsidy = GetBlockValue((int)nBestHeight, 0); //pos reward is now same as pow
-    }
-  }
+//  if(fTestNet)
+//  {
+//    if(nHeight>TESTNET_POS_REDUCE_BLOCK)
+//    {
+//      nSubsidy = GetBlockValue((int)nBestHeight, 0); //pos reward is now same as pow
+//    }
+//  }
 
   if(fDebug)
     printf("GetProofOfStakeReward(): create=%s nCoinAge=%" PRI64d " nBits=%d\n", FormatMoney(nSubsidy).c_str(), nCoinAge, nBits);
@@ -4920,4 +4920,14 @@ int getPosStartBlock()
     posStartBlock = fTestNet ? TESTNET_POS_START_BLOCK : POS_START_BLOCK;
   }
   return posStartBlock;
+}
+
+int posReduceBlock = 0;
+int getPosReduceBlock()
+{
+  if (!posReduceBlock)
+  {
+    posReduceBlock = fTestNet ? TESTNET_POS_REDUCE_BLOCK : POS_REDUCE_BLOCK;
+  }
+  return posReduceBlock;
 }

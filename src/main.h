@@ -162,6 +162,7 @@ unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, bool fProof
 
 int getPosStartBlock();
 int getPosFixBlock();
+int getPosReduceBlock();
 
 bool GetWalletFile(CWallet* pwallet, std::string &strWalletFileOut);
 
