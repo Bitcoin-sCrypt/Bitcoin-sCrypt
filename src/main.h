@@ -53,8 +53,12 @@ static const int64 MAX_MINT_PROOF_OF_STAKE = 0.15 * COIN;	// 15% annual interest
 
 static const int POS_START_BLOCK = 640000;
 static const int TESTNET_POS_START_BLOCK = 500;
+
 static const int POS_FIX_BLOCK=730000;
-static const int TESTNET_POS_FIX_BLOCK=4000;
+static const int TESTNET_POS_FIX_BLOCK=150;
+
+static const int POS_REDUCE_BLOCK = 2660000;
+static const int TESTNET_POS_REDUCE_BLOCK = 500;
 
 static const int64 nMaxClockDrift = 2 * 60 * 60;        // two hours
 
@@ -105,6 +109,7 @@ extern CCriticalSection cs_setpwalletRegistered;
 extern std::set<CWallet*> setpwalletRegistered;
 extern unsigned char pchMessageStart[4];
 extern std::map<uint256, CBlock*> mapOrphanBlocks;
+extern bool FailedStake;
 
 // Settings
 extern int64 nTransactionFee;
@@ -157,8 +162,6 @@ unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, bool fProof
 
 int getPosStartBlock();
 int getPosFixBlock();
-
-
 
 bool GetWalletFile(CWallet* pwallet, std::string &strWalletFileOut);
 
