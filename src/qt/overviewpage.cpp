@@ -170,6 +170,11 @@ void OverviewPage::setNumTransactions(int count)
     ui->labelNumTransactions->setText(QLocale::system().toString(count));
 }
 
+void OverviewPage::setHeight(int count)
+{
+    ui->blockHeight->setText(QLocale::system().toString(count));
+}
+
 void OverviewPage::setModel(WalletModel *model)
 {
     this->model = model;
@@ -192,6 +197,9 @@ void OverviewPage::setModel(WalletModel *model)
 
         setNumTransactions(model->getNumTransactions());
         connect(model, SIGNAL(numTransactionsChanged(int)), this, SLOT(setNumTransactions(int)));
+
+        setHeight(model->getNumTransactions());
+        connect(model, SIGNAL(numHeightChanged(int)), this, SLOT(setHeight(int)));
 
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
     }

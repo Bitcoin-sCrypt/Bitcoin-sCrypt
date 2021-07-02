@@ -188,9 +188,10 @@ Value listunspent(const Array& params, bool fHelp)
 
 Value createrawtransaction(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() != 2)
+//    if (fHelp || params.size() != 2)
+  if (fHelp || params.size() < 2 || params.size() > 3)
         throw runtime_error(
-            "createrawtransaction [{\"txid\":txid,\"vout\":n},...] {address:amount,...}\n"
+      "createrawtransaction [{\"txid\":txid,\"vout\":n},...] {address:amount,\"data\":\"hex\",...}\n"
             "Create a transaction spending given inputs\n"
             "(array of objects containing transaction id and output number),\n"
             "sending to given address(es).\n"
@@ -199,6 +200,8 @@ Value createrawtransaction(const Array& params, bool fHelp)
             "it is not stored in the wallet or transmitted to the network.");
 
     RPCTypeCheck(params, list_of(array_type)(obj_type));
+  if (params[0].is_null() || params[1].is_null())
+    throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, arguments 1 and 2 must be non-null");
 
     Array inputs = params[0].get_array();
     Object sendTo = params[1].get_obj();
@@ -230,12 +233,23 @@ Value createrawtransaction(const Array& params, bool fHelp)
     set<CBitcoinAddress> setAddress;
     BOOST_FOREACH(const Pair& s, sendTo)
     {
+      if (s.name_ == "data")
+      {
+        std::string temp=s.value_.get_str();
+        std::vector<unsigned char> data(temp.begin(), temp.end());
+
+        CTxOut out(0, CScript() << OP_RETURN << data);
+        rawTx.vout.push_back(out);
+      }
+      else
+      {
         CBitcoinAddress address(s.name_);
         if (!address.IsValid())
-            throw JSONRPCError(-5, string("Invalid Bitcoin-sCrypt address:")+s.name_);
+          throw JSONRPCError(-5, string("Invalid Bitcoin-sCrypt address:")+s.name_);
 
         if (setAddress.count(address))
-            throw JSONRPCError(-8, string("Invalid parameter, duplicated address: ")+s.name_);
+          throw JSONRPCError(-8, string("Invalid parameter, duplicated address: ")+s.name_);
+
         setAddress.insert(address);
 
         CScript scriptPubKey;
@@ -244,6 +258,7 @@ Value createrawtransaction(const Array& params, bool fHelp)
 
         CTxOut out(nAmount, scriptPubKey);
         rawTx.vout.push_back(out);
+      }
     }
 
     CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>754</width>
-    <height>450</height>
+    <height>518</height>
    </rect>
   </property>
   <property name="font">
@@ -192,6 +192,23 @@
             </property>
            </widget>
           </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_height">
+            <property name="text">
+             <string>Block height:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLabel" name="blockHeight">
+            <property name="toolTip">
+             <string>current block height in sync</string>
+            </property>
+            <property name="text">
+             <string notr="true">0</string>
+            </property>
+           </widget>
+          </item>
           <item row="3" column="0">
            <widget class="QLabel" name="labelImmatureText">
             <property name="text">
@@ -306,6 +323,12 @@
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>477</height>
+        </size>
+       </property>
        <property name="frameShape">
         <enum>QFrame::StyledPanel</enum>
        </property>
@@ -325,7 +348,7 @@
           <item>
            <widget class="QLabel" name="labelTransactionsStatus">
             <property name="toolTip">
-             <string>The displayed information may be out of date. Your wallet automatically synchronizes with the LiteBar network after a connection is established, but this process has not completed yet.</string>
+             <string>The displayed information may be out of date. Your wallet automatically synchronizes with the Bitcoin-sCrypt network after a connection is established, but this process has not completed yet.</string>
             </property>
             <property name="styleSheet">
              <string notr="true">QLabel { color: red; }</string>
@@ -355,6 +378,12 @@
         </item>
         <item>
          <widget class="QListView" name="listTransactions">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>422</height>
+           </size>
+          </property>
           <property name="styleSheet">
            <string notr="true">QListView { background: transparent; }</string>
           </property>

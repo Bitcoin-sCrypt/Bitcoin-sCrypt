@@ -48,6 +48,7 @@ static const int64 nTargetSpacingWorkMax = 2 * nStakeTargetSpacing;
 int nCoinbaseMaturity = 100;
 
 CBlockIndex* pindexGenesisBlock = NULL;
+bool FailedStake = false;
 int nBestHeight = -1;
 CBigNum bnBestChainWork = 0;
 CBigNum bnBestInvalidWork = 0;
@@ -1306,7 +1307,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfSta
   if(fProofOfStake)
     return GetNextPosTargetRequired(pindexLast, true);
 
-  if (pindexLast->nHeight > POS_FIX_BLOCK)
+  if (pindexLast->nHeight > getPosFixBlock())
     return DarkGravityWave3fix(pindexLast,false);
 
   if (pindexLast->nTime > VERSION3_SWITCH_TIME)
@@ -1316,6 +1317,16 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfSta
     return GetNextTargetRequired_V2(pindexLast,false);
 
   return GetNextTargetRequired_V1(pindexLast,false);
+}
+
+int posFixBlock = 0;
+int getPosFixBlock()
+{
+	if (!posFixBlock)
+	{
+		posFixBlock = fTestNet ? TESTNET_POS_FIX_BLOCK : POS_FIX_BLOCK;
+	}
+	return posFixBlock;
 }
 
 unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, bool fProofOfStake)
@@ -1467,15 +1478,21 @@ void static InvalidChainFound(CBlockIndex* pindexNew)
         CTxDB().WriteBestInvalidWork(bnBestInvalidWork);
         uiInterface.NotifyBlocksChanged();
     }
-    printf("InvalidChainFound: invalid block=%s  height=%d  work=%s  date=%s\n",
-      pindexNew->GetBlockHash().ToString().substr(0,20).c_str(), pindexNew->nHeight,
-      pindexNew->bnChainWork.ToString().c_str(), DateTimeStrFormat("%x %H:%M:%S",
-      pindexNew->GetBlockTime()).c_str());
-    printf("InvalidChainFound:  current best=%s  height=%d  work=%s  date=%s\n",
-      hashBestChain.ToString().substr(0,20).c_str(), nBestHeight, bnBestChainWork.ToString().c_str(),
-      DateTimeStrFormat("%x %H:%M:%S", pindexBest->GetBlockTime()).c_str());
+    if(!FailedStake)
+    {
+      printf("InvalidChainFound: invalid block=%s  height=%d  work=%s  date=%s\n",
+        pindexNew->GetBlockHash().ToString().substr(0,20).c_str(), pindexNew->nHeight,
+        pindexNew->bnChainWork.ToString().c_str(), DateTimeStrFormat("%x %H:%M:%S",
+        pindexNew->GetBlockTime()).c_str());
+      printf("InvalidChainFound:  current best=%s  height=%d  work=%s  date=%s\n",
+        hashBestChain.ToString().substr(0,20).c_str(), nBestHeight, bnBestChainWork.ToString().c_str(),
+        DateTimeStrFormat("%x %H:%M:%S", pindexBest->GetBlockTime()).c_str());
+    }
     if (pindexBest && bnBestInvalidWork > bnBestChainWork + pindexBest->GetBlockTrust() * 6)
+    {
+      if(!FailedStake)
         printf("InvalidChainFound: WARNING: Displayed transactions may not be correct!  You may need to upgrade, or other nodes may need to upgrade.\n");
+    }
 }
 
 void CBlock::UpdateTime(const CBlockIndex* pindexPrev)
@@ -1720,8 +1737,24 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
           if (!GetCoinAge(txdb, nCoinAge))
             return error("ConnectInputs() : %s unable to get coin age for coinstake", GetHash().ToString().substr(0,10).c_str());
           int64 nStakeReward = GetValueOut() - nValueIn;
-          if (nStakeReward > GetProofOfStakeReward(nCoinAge, pindexBlock->nBits, nTime, pindexBlock->nHeight) - GetMinFee() + MIN_TX_FEE)
-            return DoS(100, error("ConnectInputs() : %s stake reward exceeded", GetHash().ToString().substr(0,10).c_str()));
+
+// check that stake value is more than reward
+          if (nStakeReward > nValueIn)
+          {
+//cout<<"nstakeReward "<< nStakeReward<<"\n";
+//cout<<"nValueIn "<< nValueIn<<"\n";
+            FailedStake=true;
+return 0;
+//            strMiscWarning = _("stake is too small. please dust your wallet");
+//            return DoS(0, error("stake amount is too small. please dust your wallet"));
+          }
+          else
+          {
+            FailedStake=false;
+          }
+
+//          if (nStakeReward > GetProofOfStakeReward(nCoinAge, pindexBlock->nBits, nTime, pindexBlock->nHeight) - GetMinFee() + MIN_TX_FEE)
+//            return DoS(100, error("ConnectInputs() : %s stake reward exceeded", GetHash().ToString().substr(0,10).c_str()));
         }
         else
         {
@@ -2076,6 +2109,7 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
     else if (hashPrevBlock == hashBestChain)
     {
         if (!SetBestChainInner(txdb, pindexNew))
+          if(!FailedStake)
             return error("SetBestChain() : SetBestChainInner failed");
     }
     else
@@ -2365,8 +2399,12 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot) const
 
     // Check coinstake timestamp
     if (IsProofOfStake() && !CheckCoinStakeTimestamp(GetBlockTime(), (int64)vtx[1].nTime))
-        return DoS(50, error("CheckBlock() : coinstake timestamp violation nTimeBlock=%" PRI64d " nTimeTx=%u", GetBlockTime(), vtx[1].nTime));
-
+    {
+printf("block time %s\n",DateTimeStrFormat(GetBlockTime()).c_str());
+printf("ctx[1]time %s\n",DateTimeStrFormat(vtx[1].nTime).c_str());
+printf("CheckBlock() : coinstake timestamp violation\n\n");
+        return DoS(0, error("CheckBlock() : coinstake timestamp violation nTimeBlock=%" PRI64d " nTimeTx=%u", GetBlockTime(), vtx[1].nTime));
+    }
     // Check transactions
     BOOST_FOREACH(const CTransaction& tx, vtx)
     {
@@ -2413,8 +2451,8 @@ bool CBlock::AcceptBlock()
     CBlockIndex* pindexPrev = (*mi).second;
     int nHeight = pindexPrev->nHeight+1;
 
-	if (IsProofOfStake() && nHeight < POS_START_BLOCK)
-        return DoS(100, error("AcceptBlock() : No PoS block allowed before %d (height= %d))",POS_START_BLOCK, nHeight));
+	if (IsProofOfStake() && nHeight < getPosStartBlock())
+        return DoS(100, error("AcceptBlock() : No PoS block allowed before %d (height= %d))",getPosStartBlock(), nHeight));
 
     // Check proof-of-work or proof-of-stake
     if (nBits != GetNextWorkRequired(pindexPrev, IsProofOfStake()))
@@ -2444,6 +2482,7 @@ bool CBlock::AcceptBlock()
     if (!WriteToDisk(nFile, nBlockPos))
         return error("AcceptBlock() : WriteToDisk failed");
     if (!AddToBlockIndex(nFile, nBlockPos))
+      if(!FailedStake)
         return error("AcceptBlock() : AddToBlockIndex failed");
 
     // Relay inventory, but don't relay old inventory during initial block download
@@ -2543,6 +2582,7 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
 
     // Store to disk
     if (!pblock->AcceptBlock())
+      if(!FailedStake)
         return error("ProcessBlock() : AcceptBlock FAILED");
 
     // Recursively process any orphan blocks that depended on this one
@@ -3032,8 +3072,16 @@ string GetWarnings(string strFor)
     // Longer invalid proof-of-work chain
     if (pindexBest && bnBestInvalidWork > bnBestChainWork + pindexBest->GetBlockTrust() * 6)
     {
-        nPriority = 2000;
-        strStatusBar = strRPC = "WARNING: Displayed transactions may not be correct!  You may need to upgrade, or other nodes may need to upgrade.";
+      if(FailedStake)
+      {
+        nPriority = 1000;
+        strMiscWarning = _("stake too small, please dust your wallet");
+      }
+//      else
+//      {
+//        nPriority = 900;
+//        strStatusBar = strRPC = "WARNING: Displayed transactions may not be correct!  You may need to upgrade, or other nodes may need to upgrade.";
+//      }
     }
 
     // Alerts
@@ -3209,13 +3257,23 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         {
           vRecv >> pfrom->strSubVer;
           printf("peer connecting subver is %s",pfrom->strSubVer.c_str());
+// drop connections from older versions than 2.0
           int iSubVer=pfrom->strSubVer.find("BTCS:2");
-          if((iSubVer < 1) && (nBestHeight > POS_FIX_BLOCK))
+          if((iSubVer < 1) && (nBestHeight > getPosFixBlock()))
           {
             printf("  -  disconnecting .....\n");
             pfrom->fDisconnect = true;
             return false;
           }
+// drop connections from older versions than 2.2
+          iSubVer=pfrom->strSubVer.find("BTCS:2.2");
+          if((iSubVer < 1) && (nBestHeight > getPosReduceBlock()))
+          {
+            printf("  -  disconnecting .....\n");
+            pfrom->fDisconnect = true;
+            return false;
+          }
+
           printf("\n");
         }
 
@@ -4309,8 +4367,7 @@ CBlock* CreateNewBlock(CWallet* pwallet, bool fProofOfStake)
                     // or other transactions in the memory pool.
                     if (!mempool.mapTx.count(txin.prevout.hash))
                     {
-                        printf("ERROR: mempool transaction missing input\n");
-//                        if (fDebug) assert("mempool transaction missing input" == 0);
+                        if (fDebug) assert("mempool transaction missing input" == 0);
                         fMissingInputs = true;
                         if (porphan)
                             vOrphan.pop_back();
@@ -4590,6 +4647,7 @@ printf ("CheckWork: hash too large.\n");
 
         // Process this block the same as if we had received it from another node
         if (!ProcessBlock(NULL, pblock))
+          if(!FailedStake)
             return error("BitcoinMiner : ProcessBlock, block not accepted");
     }
 
@@ -4828,14 +4886,49 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet)
 int64 GetProofOfStakeReward(int64 nCoinAge, unsigned int nBits, unsigned int nTime, int nHeight)
 {
   int64 nRewardCoinYear = 0;
-  if(nHeight > POS_START_BLOCK)
+  int64 nSubsidy = 0;
+  if(nHeight > getPosStartBlock())
   {  
     nRewardCoinYear = MAX_MINT_PROOF_OF_STAKE;
+    nSubsidy = nCoinAge * nRewardCoinYear / 365;
   }
-  int64 nSubsidy = nCoinAge * nRewardCoinYear / 365;
-	if (fDebug)
-        printf("GetProofOfStakeReward(): create=%s nCoinAge=%" PRI64d " nBits=%d\n", FormatMoney(nSubsidy).c_str(), nCoinAge, nBits);
 
-    return nSubsidy;
+
+  if(nHeight>getPosReduceBlock())
+  {
+    nSubsidy = GetBlockValue((int)nBestHeight, 0); //pos reward is now same as pow
+  }
+
+//  if(fTestNet)
+//  {
+//    if(nHeight>TESTNET_POS_REDUCE_BLOCK)
+//    {
+//      nSubsidy = GetBlockValue((int)nBestHeight, 0); //pos reward is now same as pow
+//    }
+//  }
+
+  if(fDebug)
+    printf("GetProofOfStakeReward(): create=%s nCoinAge=%" PRI64d " nBits=%d\n", FormatMoney(nSubsidy).c_str(), nCoinAge, nBits);
+
+  return nSubsidy;
 }
 
+int posStartBlock = 0;
+int getPosStartBlock()
+{
+  if (!posStartBlock)
+  {
+    posStartBlock = fTestNet ? TESTNET_POS_START_BLOCK : POS_START_BLOCK;
+  }
+  return posStartBlock;
+}
+
+int posReduceBlock = 0;
+int getPosReduceBlock()
+{
+  if (!posReduceBlock)
+  {
+    posReduceBlock = fTestNet ? TESTNET_POS_REDUCE_BLOCK : POS_REDUCE_BLOCK;
+  }
+  return posReduceBlock;
+}

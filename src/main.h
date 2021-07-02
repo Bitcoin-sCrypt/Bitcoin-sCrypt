@@ -52,7 +52,13 @@ extern int nCoinbaseMaturity;
 static const int64 MAX_MINT_PROOF_OF_STAKE = 0.15 * COIN;	// 15% annual interest
 
 static const int POS_START_BLOCK = 640000;
+static const int TESTNET_POS_START_BLOCK = 350;
+
 static const int POS_FIX_BLOCK=730000;
+static const int TESTNET_POS_FIX_BLOCK=400;
+
+static const int POS_REDUCE_BLOCK = 3000000;
+static const int TESTNET_POS_REDUCE_BLOCK = 500;
 
 static const int64 nMaxClockDrift = 2 * 60 * 60;        // two hours
 
@@ -103,6 +109,7 @@ extern CCriticalSection cs_setpwalletRegistered;
 extern std::set<CWallet*> setpwalletRegistered;
 extern unsigned char pchMessageStart[4];
 extern std::map<uint256, CBlock*> mapOrphanBlocks;
+extern bool FailedStake;
 
 // Settings
 extern int64 nTransactionFee;
@@ -153,8 +160,9 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
 unsigned int GetNextTargetRequired_V1(const CBlockIndex* pindexLast, bool fProofOfStake);
 unsigned int GetNextTargetRequired_V2(const CBlockIndex* pindexLast, bool fProofOfStake);
 
-
-
+int getPosStartBlock();
+int getPosFixBlock();
+int getPosReduceBlock();
 
 bool GetWalletFile(CWallet* pwallet, std::string &strWalletFileOut);
 
@@ -472,10 +480,20 @@ public:
 
     void SetNull()
     {
+      if(fTestNet)
+      {
+        if(nBestHeight >TESTNET_POS_START_BLOCK)
+          nVersion = CTransaction::POS_VERSION;
+        else
+          nVersion = CTransaction::POW_VERSION;
+      }
+      else
+      {
         if(nBestHeight >POS_START_BLOCK)
           nVersion = CTransaction::POS_VERSION;
         else
           nVersion = CTransaction::POW_VERSION;
+      }
 
         vin.clear();
         vout.clear();

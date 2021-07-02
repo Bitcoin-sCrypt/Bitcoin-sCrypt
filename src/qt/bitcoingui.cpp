@@ -1375,7 +1375,9 @@ void BitcoinGUI::updateMintingIcon()
          labelMintingIcon->setToolTip(tr("Not staking because wallet is locked"));
       else if(!fStaking)
          labelMintingIcon->setToolTip(tr("Staking is disabled"));
-      else if(nBestHeight < POS_START_BLOCK)
+      else if((!fTestNet) && (nBestHeight < POS_START_BLOCK))
+         labelMintingIcon->setToolTip(tr("No PoS rewards yet"));
+      else if((fTestNet) && (nBestHeight < TESTNET_POS_START_BLOCK))
          labelMintingIcon->setToolTip(tr("No PoS rewards yet"));
       else
       {

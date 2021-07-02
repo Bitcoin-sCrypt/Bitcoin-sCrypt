@@ -875,7 +875,7 @@ bool CTxDB::LoadBlockIndexGuts()
             pindexNew->nBlockPos      = diskindex.nBlockPos;
             pindexNew->nHeight        = diskindex.nHeight;
             pindexNew->nMint          = diskindex.nMint;
-//            pindexNew->nMoneySupply   = diskindex.nMoneySupply;
+            pindexNew->nMoneySupply   = diskindex.nMoneySupply;
             pindexNew->nFlags         = diskindex.nFlags;
             pindexNew->nStakeModifier = diskindex.nStakeModifier;
             pindexNew->prevoutStake   = diskindex.prevoutStake;

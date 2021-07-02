@@ -999,7 +999,7 @@ void ThreadSocketHandler2(void* parg)
 static const char *strDNSSeed[][3] = {
     {"bitcoinscrypt.io", "45.55.216.92"},
     {"btcs.altcoinwarz.com", "btcs.altcoinwarz.com"},
-    {"altcoinwarz.com", "altcoinwarz.com"}
+    {"explorer.bitcoinscrypt.io", "explorer.bitcoinscrypt.io"}
 };
 
 void ThreadDNSAddressSeed(void* parg)

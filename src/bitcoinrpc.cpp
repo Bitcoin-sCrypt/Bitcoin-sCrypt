@@ -1139,6 +1139,7 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("newmint",       ValueFromAmount(pwalletMain->GetNewMint())));
     obj.push_back(Pair("stake",         ValueFromAmount(pwalletMain->GetStake())));
     obj.push_back(Pair("blocks",        (int)nBestHeight));
+    obj.push_back(Pair("moneysupply",   ValueFromAmount(pindexBest->nMoneySupply)));
     obj.push_back(Pair("connections",   (int)vNodes.size()));
     obj.push_back(Pair("proxy",         (addrProxy.IsValid() ? addrProxy.ToStringIPPort() : string())));
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
@@ -3587,6 +3588,7 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "getrawtransaction"      && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "createrawtransaction"   && n > 0) ConvertTo<Array>(params[0]);
     if (strMethod == "createrawtransaction"   && n > 1) ConvertTo<Object>(params[1]);
+    if (strMethod == "createrawtransaction"   && n > 2) ConvertTo<Object>(params[2]);
     if (strMethod == "signrawtransaction"     && n > 1) ConvertTo<Array>(params[1]);
     if (strMethod == "signrawtransaction"     && n > 2) ConvertTo<Array>(params[2]);
 
